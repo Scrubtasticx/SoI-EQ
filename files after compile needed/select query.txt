@@ -1,0 +1,3 @@
+SELECT le.* FROM items i 
+INNER JOIN lootdrop_entries le ON i.id = le.item_id 
+WHERE i.name like "Simple Defiant%"

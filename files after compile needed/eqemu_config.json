@@ -1,0 +1,78 @@
+{
+     "server" : {
+          "discord" : {
+			"channelid" : "669399711433883648",
+			"itemurl" : "http://127.0.0.1/alla/?a=item&id=",
+			"refreshrate" : "15",
+			"clientid": "669398276549771265",
+			"clientsecret": "33333",
+			"serverid" : "668638800578215957",
+			"username" : "NjY5Mzk4Mjc2NTQ5NzcxMjY1.XifRtg.Rg0iBoTdAew271Qne_fjMOFSbHk"
+		},
+		  "chatserver" : {
+               "host" : "127.0.0.1",
+               "port" : "7778"
+          },
+          "database" : {
+               "db" : "everquest",
+               "host" : "localhost",
+               "password" : "",
+               "port" : "3306",
+               "username" : "root"
+          },
+          "mailserver" : {
+               "host" : "127.0.0.1",
+               "port" : "7778"
+          },
+          "qsdatabase" : {
+               "db" : "everquest",
+               "host" : "localhost",
+               "password" : "",
+               "port" : "3306",
+               "username" : "root"
+          },
+          "webinterface" : {
+               "port" : "9081"
+          },
+          "world" : {
+               "http" : {
+                    "enabled" : "true",
+                    "mimefile" : "mime.types",
+                    "port" : "9080"
+               },
+               "key" : "Xq8wOTeHBe5mltZZ4Gzv1BEUmLrEKu9",
+               "loginserver1" : {
+                    "account" : "scrubtasticx",
+                    "host" : "login.eqemulator.net",
+                    "legacy" : "1",
+                    "password" : "",
+                    "port" : "5998"
+               },
+               "loginserver2" : {
+                    "account" : "scrubtasticx",
+                    "host" : "127.0.0.1",
+                    "password" : "",
+                    "port" : "5998"
+               },
+               "longname" : "Redemption EQ (PvP)",
+               "shortname" : "Redemption",
+			   "locked": "false",
+               "tcp" : {
+                    "ip" : "3.19.3.150",
+                    "port" : "14138"
+               },
+               "telnet" : {
+                    "enabled" : "true",
+                    "ip" : "0.0.0.0",
+                    "port" : "9000"
+               }
+          },
+          "zones" : {
+               "defaultstatus" : "0",
+               "ports" : {
+                    "high" : "7400",
+                    "low" : "7000"
+               }
+          }
+     }
+}
