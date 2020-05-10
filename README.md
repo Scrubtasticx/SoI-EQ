@@ -69,7 +69,7 @@ forum, although pull requests will be much quicker and easier on all parties.
   * MariaDB/MySQL - GPL
   * GPL Perl - GPL / ActiveState (under the assumption that this is a free project)
   * CPPUnit - GLP StringUtilities - Apache
-  * LUA - MIT
+  * LUA - MIT.
 
 ## Contributors
 
