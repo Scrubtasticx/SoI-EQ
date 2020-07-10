@@ -341,7 +341,7 @@ void Mob::MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower,
 			npc_type->size *= 0.8f;
 			break;
 		case HALFLING:
-			npc_type->race = 207;
+			npc_type->race = 559;
 			npc_type->texture = 0;
 			npc_type->size *= 0.8f;
 			break;
