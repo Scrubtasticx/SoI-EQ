@@ -179,6 +179,11 @@ IPathfinder::IPath PathfinderNavmesh::FindPath(const glm::vec3 &start, const glm
 		if (path[npoly - 1] != end_ref) {
 			m_impl->query->closestPointOnPoly(path[npoly - 1], &dest_location[0], &epos[0], 0);
 			partial = true;
+			
+			auto dist = DistanceSquared(epos, current_location);
+			if (dist < 10000.0f) {
+				stuck = true;
+			}
 		}
 	
 		int n_straight_polys;
@@ -427,7 +432,7 @@ void PathfinderNavmesh::Load(const std::string &path)
 
 		std::vector<char> buffer;
 		buffer.resize(buffer_size);
-		uint32_t v = EQEmu::InflateData(&data[0], data_size, &buffer[0], buffer_size);
+		uint32_t v = EQ::InflateData(&data[0], data_size, &buffer[0], buffer_size);
 		fclose(f);
 
 		char *buf = &buffer[0];

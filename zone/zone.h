@@ -133,7 +133,7 @@ public:
 
 	const char *GetSpellBlockedMessage(uint32 spell_id, const glm::vec3 &location);
 
-	EQEmu::Random random;
+	EQ::Random random;
 	EQTime        zone_time;
 
 	ZonePoint *GetClosestZonePoint(const glm::vec3 &location, const char *to_name, Client *client, float max_distance = 40000.0f);
@@ -163,6 +163,7 @@ public:
 	inline void ShowNPCGlobalLoot(Client *to, NPC *who) { m_global_loot.ShowNPCGlobalLoot(to, who); }
 	inline void ShowZoneGlobalLoot(Client *to) { m_global_loot.ShowZoneGlobalLoot(to); }
 	int GetZoneTotalBlockedSpells() { return zone_total_blocked_spells; }
+	void DumpMerchantList(uint32 npcid);
 	int SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charges, bool sold = false);
 	int32 MobsAggroCount() { return aggroedmobs; }
 
@@ -204,6 +205,7 @@ public:
 
 	time_t weather_timer;
 	Timer  spawn2_timer;
+	Timer  hot_reload_timer;
 
 	uint8  weather_intensity;
 	uint8  zone_weather;
@@ -270,9 +272,15 @@ public:
 	void UpdateQGlobal(uint32 qid, QGlobal newGlobal);
 	void weatherSend(Client *client = nullptr);
 
+	bool IsQuestHotReloadQueued() const;
+	void SetQuestHotReloadQueued(bool in_quest_hot_reload_queued);
+
 	WaterMap *watermap;
 	ZonePoint *GetClosestZonePoint(const glm::vec3 &location, uint32 to, Client *client, float max_distance = 40000.0f);
 	ZonePoint *GetClosestZonePointWithoutZone(float x, float y, float z, Client *client, float max_distance = 40000.0f);
+
+	uint32 GetInstanceTimeRemaining() const;
+	void SetInstanceTimeRemaining(uint32 instance_time_remaining);
 
 	/**
 	 * GMSay Callback for LogSys
@@ -340,6 +348,9 @@ private:
 	bool      m_ucss_available;
 	bool      staticzone;
 	bool      zone_has_current_time;
+	bool      quest_hot_reload_queued;
+
+private:
 	double    max_movement_update_range;
 	char      *long_name;
 	char      *map_name;
@@ -354,6 +365,7 @@ private:
 	uint8     zone_type;
 	uint16    instanceversion;
 	uint32    instanceid;
+	uint32    instance_time_remaining;
 	uint32    pgraveyard_id, pgraveyard_zoneid;
 	uint32    pMaxClients;
 	uint32    zoneid;

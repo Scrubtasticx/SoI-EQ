@@ -955,6 +955,27 @@ bool TaskManager::AppropriateLevel(int TaskID, int PlayerLevel) {
 
 }
 
+std::string TaskManager::GetTaskName(uint32 task_id)
+{
+	if (task_id > 0 && task_id < MAXTASKS) {
+		if (Tasks[task_id] != nullptr) {
+			return Tasks[task_id]->Title;
+		}
+	}
+
+	return std::string();
+}
+
+TaskType TaskManager::GetTaskType(uint32 task_id)
+{
+	if (task_id > 0 && task_id < MAXTASKS) {
+		if (Tasks[task_id] != nullptr) {
+			return Tasks[task_id]->type;
+		}
+	}
+	return TaskType::Task;
+}
+
 int TaskManager::GetTaskMinLevel(int TaskID)
 {
 	if (Tasks[TaskID]->MinLevel)
@@ -1060,7 +1081,7 @@ void TaskManager::TaskQuestSetSelector(Client *c, ClientTaskState *state, Mob *m
 
 void TaskManager::SendTaskSelector(Client *c, Mob *mob, int TaskCount, int *TaskList) {
 
-	if (c->ClientVersion() >= EQEmu::versions::ClientVersion::RoF)
+	if (c->ClientVersion() >= EQ::versions::ClientVersion::RoF)
 	{
 		SendTaskSelectorNew(c, mob, TaskCount, TaskList);
 		return;
@@ -1107,7 +1128,7 @@ void TaskManager::SendTaskSelector(Client *c, Mob *mob, int TaskCount, int *Task
 			continue;
 
 		buf.WriteUInt32(TaskList[i]);	// TaskID
-		if (c->ClientVersion() != EQEmu::versions::ClientVersion::Titanium)
+		if (c->ClientVersion() != EQ::versions::ClientVersion::Titanium)
 			buf.WriteFloat(1.0f); // affects color, difficulty?
 		buf.WriteUInt32(Tasks[TaskList[i]]->Duration);
 		buf.WriteUInt32(static_cast<int>(Tasks[TaskList[i]]->dur_code));
@@ -1115,7 +1136,7 @@ void TaskManager::SendTaskSelector(Client *c, Mob *mob, int TaskCount, int *Task
 		buf.WriteString(Tasks[TaskList[i]]->Title); // max 64 with null
 		buf.WriteString(Tasks[TaskList[i]]->Description); // max 4000 with null
 
-		if (c->ClientVersion() != EQEmu::versions::ClientVersion::Titanium)
+		if (c->ClientVersion() != EQ::versions::ClientVersion::Titanium)
 			buf.WriteUInt8(0); // Has reward set flag
 
 		buf.WriteUInt32(Tasks[TaskList[i]]->ActivityCount);
@@ -1760,7 +1781,7 @@ void ClientTaskState::UpdateTasksOnExplore(Client *c, int ExploreID)
 	return;
 }
 
-bool ClientTaskState::UpdateTasksOnDeliver(Client *c, std::list<EQEmu::ItemInstance *> &Items, int Cash, int NPCTypeID)
+bool ClientTaskState::UpdateTasksOnDeliver(Client *c, std::list<EQ::ItemInstance *> &Items, int Cash, int NPCTypeID)
 {
 	bool Ret = false;
 
@@ -1970,6 +1991,7 @@ void ClientTaskState::IncrementDoneCount(Client *c, TaskInformation *Task, int T
 		// Send an update packet for this single activity
 		taskmanager->SendTaskActivityLong(c, info->TaskID, ActivityID, TaskIndex,
 						  Task->Activity[ActivityID].Optional);
+		taskmanager->SaveClientState(c, this);
 	}
 }
 
@@ -1977,7 +1999,7 @@ void ClientTaskState::RewardTask(Client *c, TaskInformation *Task) {
 
 	if(!Task || !c) return;
 
-	const EQEmu::ItemData* Item;
+	const EQ::ItemData* Item;
 	std::vector<int> RewardList;
 
 	switch(Task->RewardMethod) {
@@ -2227,15 +2249,16 @@ void ClientTaskState::UpdateTaskActivity(Client *c, int TaskID, int ActivityID, 
 		return;
 
 	// The Activity is not currently active
-	if (info->Activity[ActivityID].State != ActivityActive)
+	if (info->Activity[ActivityID].State == ActivityHidden)
 		return;
-	Log(Logs::General, Logs::Tasks, "[UPDATE] Increment done count on UpdateTaskActivity");
+		
+	Log(Logs::General, Logs::Tasks, "[UPDATE] Increment done count on UpdateTaskActivity %d %d", ActivityID, Count);
 	IncrementDoneCount(c, Task, ActiveTaskIndex, ActivityID, Count, ignore_quest_update);
 }
 
 void ClientTaskState::ResetTaskActivity(Client *c, int TaskID, int ActivityID)
 {
-	Log(Logs::General, Logs::Tasks, "[UPDATE] ClientTaskState UpdateTaskActivity(%i, %i, 0).", TaskID, ActivityID);
+	Log(Logs::General, Logs::Tasks, "[RESET] ClientTaskState ResetTaskActivity(%i, %i).", TaskID, ActivityID);
 
 	// Quick sanity check
 	if (ActivityID < 0 || (ActiveTaskCount == 0 && ActiveTask.TaskID == TASKSLOTEMPTY))
@@ -2277,18 +2300,11 @@ void ClientTaskState::ResetTaskActivity(Client *c, int TaskID, int ActivityID)
 		return;
 
 	// The Activity is not currently active
-	if (info->Activity[ActivityID].State != ActivityActive)
+	if (info->Activity[ActivityID].State == ActivityHidden)
 		return;
-
-	Log(Logs::General, Logs::Tasks, "[UPDATE] ResetTaskActivityCount");
-
-	info->Activity[ActivityID].DoneCount = 0;
-
-	info->Activity[ActivityID].Updated = true;
-
-	// Send an update packet for this single activity
-	taskmanager->SendTaskActivityLong(c, info->TaskID, ActivityID, ActiveTaskIndex,
-					  Task->Activity[ActivityID].Optional);
+		
+	Log(Logs::General, Logs::Tasks, "[RESET] Increment done count on ResetTaskActivity");
+	IncrementDoneCount(c, Task, ActiveTaskIndex, ActivityID, (info->Activity[ActivityID].DoneCount * -1), false);
 }
 
 void ClientTaskState::ShowClientTasks(Client *c)
@@ -2687,7 +2703,7 @@ void TaskManager::SendTaskActivityShort(Client *c, int TaskID, int ActivityID, i
 
 	TaskActivityShort_Struct* tass;
 
-	if (c->ClientVersionBit() & EQEmu::versions::maskRoFAndLater)
+	if (c->ClientVersionBit() & EQ::versions::maskRoFAndLater)
 	{
 		auto outapp = new EQApplicationPacket(OP_TaskActivity, 25);
 		outapp->WriteUInt32(ClientTaskIndex);
@@ -2723,7 +2739,7 @@ void TaskManager::SendTaskActivityShort(Client *c, int TaskID, int ActivityID, i
 
 void TaskManager::SendTaskActivityLong(Client *c, int TaskID, int ActivityID, int ClientTaskIndex, bool Optional, bool TaskComplete) {
 
-	if (c->ClientVersion() >= EQEmu::versions::ClientVersion::RoF)
+	if (c->ClientVersion() >= EQ::versions::ClientVersion::RoF)
 	{
 		SendTaskActivityNew(c, TaskID, ActivityID, ClientTaskIndex, Optional, TaskComplete);
 		return;
@@ -2932,10 +2948,10 @@ void TaskManager::SendActiveTaskDescription(Client *c, int TaskID, ClientTaskInf
 		}
 
 		if(ItemID) {
-			const EQEmu::ItemData* reward_item = database.GetItem(ItemID);
+			const EQ::ItemData* reward_item = database.GetItem(ItemID);
 
-			EQEmu::SayLinkEngine linker;
-			linker.SetLinkType(EQEmu::saylink::SayLinkItemData);
+			EQ::SayLinkEngine linker;
+			linker.SetLinkType(EQ::saylink::SayLinkItemData);
 			linker.SetItemData(reward_item);
 			linker.SetTaskUse();
 			Tasks[TaskID]->item_link = linker.GenerateLink();
@@ -3188,6 +3204,68 @@ void ClientTaskState::RemoveTask(Client *c, int sequenceNumber, TaskType type)
 	}
 }
 
+void ClientTaskState::RemoveTaskByTaskID(Client *c, uint32 task_id)
+{
+	auto task_type = taskmanager->GetTaskType(task_id);
+	int character_id = c->CharacterID();
+	Log(Logs::General, Logs::Tasks, "[UPDATE] RemoveTaskByTaskID: %d", task_id);
+	std::string query = fmt::format("DELETE FROM character_activities WHERE charid = {} AND taskid = {}", character_id, task_id);
+	auto results = database.QueryDatabase(query);
+	if (!results.Success()) {
+		LogError("[TASKS] Error in CientTaskState::RemoveTaskByTaskID [{}]", results.ErrorMessage().c_str());
+		return;
+	}
+	LogTasks("[UPDATE] RemoveTaskByTaskID: {}", query.c_str());
+
+	query = fmt::format("DELETE FROM character_tasks WHERE charid = {} AND taskid = {} AND type = {}", character_id, task_id, (int) task_type);
+	results = database.QueryDatabase(query);
+	if (!results.Success()) {
+		LogError("[TASKS] Error in ClientTaskState::RemoveTaskByTaskID [{}]", results.ErrorMessage().c_str());
+	}
+
+	LogTasks("[UPDATE] RemoveTaskByTaskID: {}", query.c_str());
+
+	switch (task_type) {
+		case TaskType::Task:
+		{
+			if (ActiveTask.TaskID == task_id) {
+				auto outapp = new EQApplicationPacket(OP_CancelTask, sizeof(CancelTask_Struct));
+				CancelTask_Struct* cts = (CancelTask_Struct*)outapp->pBuffer;
+				cts->SequenceNumber = 0;
+				cts->type = static_cast<uint32>(task_type);
+				LogTasks("[UPDATE] RemoveTaskByTaskID found Task [{}]", task_id);
+				c->QueuePacket(outapp);
+				safe_delete(outapp);
+				ActiveTask.TaskID = TASKSLOTEMPTY;
+			}
+			break;
+		}
+		case TaskType::Shared:
+		{
+			break; // TODO: shared tasks
+		}
+		case TaskType::Quest:
+		{
+			for (int active_quest = 0; active_quest < MAXACTIVEQUESTS; active_quest++) {
+				if (ActiveQuests[active_quest].TaskID == task_id) {
+					auto outapp = new EQApplicationPacket(OP_CancelTask, sizeof(CancelTask_Struct));
+					CancelTask_Struct* cts = (CancelTask_Struct*)outapp->pBuffer;
+					cts->SequenceNumber = active_quest;
+					cts->type = static_cast<uint32>(task_type);
+					LogTasks("[UPDATE] RemoveTaskByTaskID found Quest [{}] at index [{}]", task_id, active_quest);
+					ActiveQuests[active_quest].TaskID = TASKSLOTEMPTY;
+					ActiveTaskCount--;
+					c->QueuePacket(outapp);
+					safe_delete(outapp);
+				}
+			}
+		}
+		default: {
+			break;
+		}
+	}
+}
+
 void ClientTaskState::AcceptNewTask(Client *c, int TaskID, int NPCID, bool enforce_level_requirement)
 {
 	if (!taskmanager || TaskID < 0 || TaskID >= MAXTASKS) {
@@ -3297,18 +3375,13 @@ void ClientTaskState::AcceptNewTask(Client *c, int TaskID, int NPCID, bool enfor
 
 	taskmanager->SendSingleActiveTaskToClient(c, *active_slot, false, true);
 	c->Message(Chat::White, "You have been assigned the task '%s'.", taskmanager->Tasks[TaskID]->Title.c_str());
-
+	taskmanager->SaveClientState(c, this);
 	std::string buf = std::to_string(TaskID);
 
 	NPC *npc = entity_list.GetID(NPCID)->CastToNPC();
-	if(!npc) {
-		c->Message(Chat::Yellow, "Task Giver ID is %i", NPCID);
-		c->Message(Chat::Red, "Unable to find NPC to send EVENT_TASKACCEPTED to. Report this bug.");
-		return;
+	if(npc) {
+		parse->EventNPC(EVENT_TASK_ACCEPTED, npc, c, buf.c_str(), 0);
 	}
-
-	taskmanager->SaveClientState(c, this);
-	parse->EventNPC(EVENT_TASK_ACCEPTED, npc, c, buf.c_str(), 0);
 }
 
 void ClientTaskState::ProcessTaskProximities(Client *c, float X, float Y, float Z) {

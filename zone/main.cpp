@@ -92,7 +92,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include "../common/unix.h"
 #endif
 
-volatile bool RunLoops = true;
+#ifdef __FreeBSD__
+#include <pthread_np.h>
+#endif
+
 extern volatile bool is_zone_loaded;
 
 EntityList entity_list;
@@ -342,7 +345,7 @@ int main(int argc, char** argv) {
 	database.GetDecayTimes(npcCorpseDecayTimes);
 
 	LogInfo("Loading profanity list");
-	if (!EQEmu::ProfanityManager::LoadProfanityList(&database))
+	if (!EQ::ProfanityManager::LoadProfanityList(&database))
 		LogError("Loading profanity list failed!");
 
 	LogInfo("Loading commands");
@@ -370,7 +373,7 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		EQEmu::InitializeDynamicLookups();
+		EQ::InitializeDynamicLookups();
 		LogInfo("Initialized dynamic dictionary entries");
 	}
 
@@ -432,8 +435,10 @@ int main(int argc, char** argv) {
 	EQStreamIdentifier stream_identifier;
 	RegisterAllPatches(stream_identifier);
 
-#ifndef WIN32
+#ifdef __linux__
 	LogDebug("Main thread running with thread id [{}]", pthread_self());
+#elif defined(__FreeBSD__)
+	LogDebug("Main thread running with thread id [{}]", pthread_getthreadid_np());
 #endif
 
 	bool worldwasconnected       = worldserver.Connected();
@@ -577,19 +582,19 @@ int main(int argc, char** argv) {
 	return 0;
 }
 
+void Shutdown()
+{
+	Zone::Shutdown(true);
+	LogInfo("Shutting down...");
+	LogSys.CloseFileLogs();
+	EQ::EventLoop::Get().Shutdown();
+}
+
 void CatchSignal(int sig_num) {
 #ifdef _WINDOWS
 	LogInfo("Recieved signal: [{}]", sig_num);
 #endif
-	RunLoops = false;
-}
-
-void Shutdown()
-{
-	Zone::Shutdown(true);
-	RunLoops = false;
-	LogInfo("Shutting down...");
-	LogSys.CloseFileLogs();
+	Shutdown();
 }
 
 /* Update Window Title with relevant information */

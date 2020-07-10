@@ -751,7 +751,7 @@ bool Database::SaveCharacterCreate(uint32 character_id, uint32 account_id, Playe
 }
 
 /* This only for new Character creation storing */
-bool Database::StoreCharacter(uint32 account_id, PlayerProfile_Struct* pp, EQEmu::InventoryProfile* inv) {
+bool Database::StoreCharacter(uint32 account_id, PlayerProfile_Struct* pp, EQ::InventoryProfile* inv) {
 	uint32 charid = 0;
 	char zone[50];
 	float x, y, z;
@@ -779,8 +779,8 @@ bool Database::StoreCharacter(uint32 account_id, PlayerProfile_Struct* pp, EQEmu
 
 	/* Insert starting inventory... */
 	std::string invquery;
-	for (int16 i = EQEmu::invslot::EQUIPMENT_BEGIN; i <= EQEmu::invbag::BANK_BAGS_END;) {
-		const EQEmu::ItemInstance* newinv = inv->GetItem(i);
+	for (int16 i = EQ::invslot::EQUIPMENT_BEGIN; i <= EQ::invbag::BANK_BAGS_END;) {
+		const EQ::ItemInstance* newinv = inv->GetItem(i);
 		if (newinv) {
 			invquery = StringFormat("INSERT INTO `inventory` (charid, slotid, itemid, charges, color) VALUES (%u, %i, %u, %i, %u)",
 				charid, i, newinv->GetItem()->ID, newinv->GetCharges(), newinv->GetColor());
@@ -788,16 +788,16 @@ bool Database::StoreCharacter(uint32 account_id, PlayerProfile_Struct* pp, EQEmu
 			auto results = QueryDatabase(invquery);
 		}
 
-		if (i == EQEmu::invslot::slotCursor) {
-			i = EQEmu::invbag::GENERAL_BAGS_BEGIN;
+		if (i == EQ::invslot::slotCursor) {
+			i = EQ::invbag::GENERAL_BAGS_BEGIN;
 			continue;
 		}
-		else if (i == EQEmu::invbag::CURSOR_BAG_END) {
-			i = EQEmu::invslot::BANK_BEGIN;
+		else if (i == EQ::invbag::CURSOR_BAG_END) {
+			i = EQ::invslot::BANK_BEGIN;
 			continue;
 		}
-		else if (i == EQEmu::invslot::BANK_END) {
-			i = EQEmu::invbag::BANK_BAGS_BEGIN;
+		else if (i == EQ::invslot::BANK_END) {
+			i = EQ::invbag::BANK_BAGS_BEGIN;
 			continue;
 		}
 		i++;
@@ -923,6 +923,38 @@ void Database::GetCharName(uint32 char_id, char* name) {
 	for (auto row = results.begin(); row != results.end(); ++row) {
 		strcpy(name, row[0]);
 	}
+}
+
+const char* Database::GetCharNameByID(uint32 char_id) {
+	std::string query = fmt::format("SELECT `name` FROM `character_data` WHERE id = {}", char_id);
+	auto results = QueryDatabase(query);
+
+	if (!results.Success()) {
+		return "";
+	}
+
+	if (results.RowCount() == 0) {
+		return "";
+	}
+
+	auto row = results.begin();
+	return row[0];
+}
+
+const char* Database::GetNPCNameByID(uint32 npc_id) {
+	std::string query = fmt::format("SELECT `name` FROM `npc_types` WHERE id = {}", npc_id);
+	auto results = QueryDatabase(query);
+
+	if (!results.Success()) {
+		return "";
+	}
+
+	if (results.RowCount() == 0) {
+		return "";
+	}
+
+	auto row = results.begin();
+	return row[0];
 }
 
 bool Database::LoadVariables() {
@@ -2158,6 +2190,44 @@ uint32 Database::GetGuildIDByCharID(uint32 character_id)
 	return atoi(row[0]);
 }
 
+uint32 Database::GetGroupIDByCharID(uint32 character_id)
+{
+	std::string query = fmt::format(
+		SQL(
+			SELECT groupid
+			FROM group_id
+			WHERE charid = '{}'
+		),
+		character_id
+	);
+	auto results = QueryDatabase(query);
+
+	if (!results.Success())
+		return 0;
+
+	if (results.RowCount() == 0)
+		return 0;
+
+	auto row = results.begin();
+	return atoi(row[0]);
+}
+
+uint32 Database::GetRaidIDByCharID(uint32 character_id) {
+	std::string query = fmt::format(
+		SQL(
+			SELECT raidid
+			FROM raid_members
+			WHERE charid = '{}'
+		),
+		character_id
+	);
+	auto results = QueryDatabase(query);
+	for (auto row = results.begin(); row != results.end(); ++row) {
+		return atoi(row[0]);
+	}
+	return 0;
+}
+
 /**
  * @param log_settings
  */
@@ -2335,3 +2405,4 @@ int Database::GetInstanceID(uint32 char_id, uint32 zone_id) {
 
 	return 0;
 }
+

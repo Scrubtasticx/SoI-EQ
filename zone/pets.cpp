@@ -1,16 +1,13 @@
 /*	EQEMu: Everquest Server Emulator
 	Copyright (C) 2001-2004 EQEMu Development Team (http://eqemu.org)
-
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation; version 2 of the License.
-
 	This program is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY except by those people which sell it, which
 	are required to give you total support for your newly bought product;
 	without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
@@ -163,13 +160,11 @@ void GetRandPetName(char *name)
 			break;
 		}
 	}
-
 	if (multiplier == 0)
 	{
 		LogFile->write(EQEMuLog::Error, "Multiplier == 0 in CalcPetHp,using Generic....");;
 		multiplier=12;
 	}
-
 	base_hp = 5 + (multiplier*levelb) + ((multiplier*levelb*STA) + 1)/300;
 	return base_hp;
 }
@@ -425,12 +420,12 @@ void Mob::MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower,
 	// the base items for the pet. These are always loaded
 	// so that a rank 1 suspend minion does not kill things
 	// like the special back items some focused pets may receive.
-	uint32 petinv[EQEmu::invslot::EQUIPMENT_COUNT];
+	uint32 petinv[EQ::invslot::EQUIPMENT_COUNT];
 	memset(petinv, 0, sizeof(petinv));
-	const EQEmu::ItemData *item = nullptr;
+	const EQ::ItemData *item = nullptr;
 
 	if (database.GetBasePetItems(record.equipmentset, petinv)) {
-		for (int i = EQEmu::invslot::EQUIPMENT_BEGIN; i <= EQEmu::invslot::EQUIPMENT_END; i++)
+		for (int i = EQ::invslot::EQUIPMENT_BEGIN; i <= EQ::invslot::EQUIPMENT_END; i++)
 			if (petinv[i]) {
 				item = database.GetItem(petinv[i]);
 				npc->AddLootDrop(item, &npc->itemlist, 0, 1, 127, true, true);
@@ -564,10 +559,10 @@ void NPC::GetPetState(SpellBuff_Struct *pet_buffs, uint32 *items, char *name) {
 	strn0cpy(name, GetName(), 64);
 
 	//save their items, we only care about what they are actually wearing
-	memcpy(items, equipment, sizeof(uint32) * EQEmu::invslot::EQUIPMENT_COUNT);
+	memcpy(items, equipment, sizeof(uint32) * EQ::invslot::EQUIPMENT_COUNT);
 
 	//save their buffs.
-	for (int i=EQEmu::invslot::EQUIPMENT_BEGIN; i < GetPetMaxTotalSlots(); i++) {
+	for (int i=EQ::invslot::EQUIPMENT_BEGIN; i < GetPetMaxTotalSlots(); i++) {
 		if (buffs[i].spellid != SPELL_UNKNOWN) {
 			pet_buffs[i].spellid = buffs[i].spellid;
 			pet_buffs[i].effect_type = i+1;
@@ -652,11 +647,11 @@ void NPC::SetPetState(SpellBuff_Struct *pet_buffs, uint32 *items) {
 	}
 
 	//restore their equipment...
-	for (i = EQEmu::invslot::EQUIPMENT_BEGIN; i <= EQEmu::invslot::EQUIPMENT_END; i++) {
+	for (i = EQ::invslot::EQUIPMENT_BEGIN; i <= EQ::invslot::EQUIPMENT_END; i++) {
 		if(items[i] == 0)
 			continue;
 
-		const EQEmu::ItemData* item2 = database.GetItem(items[i]);
+		const EQ::ItemData* item2 = database.GetItem(items[i]);
 
 		if (item2) {
 			bool noDrop=(item2->NoDrop == 0); // Field is reverse logic
@@ -719,7 +714,7 @@ bool ZoneDatabase::GetBasePetItems(int32 equipmentset, uint32 *items) {
 			{
 				slot = atoi(row[0]);
 
-				if (slot > EQEmu::invslot::EQUIPMENT_END)
+				if (slot > EQ::invslot::EQUIPMENT_END)
 					continue;
 
 				if (items[slot] == 0)
