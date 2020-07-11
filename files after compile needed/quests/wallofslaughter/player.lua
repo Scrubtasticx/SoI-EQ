@@ -15,7 +15,7 @@ function event_enter_zone(e)
 		eq.unique_spawn(300057,0,0,-1491,2015,51.2,192); --#Herrian_Warfrost
 		eq.spawn2(300058,0,0,-1495,1965,51.2,160); --an_excited_builder (300058)
 		eq.spawn2(300058,0,0,-1447,2014,51.2,220); -- NPC: an_excited_builder
-		eq.spawn2(300058,0,0,-1454,1976,51.2,192); -- NPC: an_excited_builder	
+		eq.spawn2(300058,0,0,-1454,1976,51.2,192); -- NPC: an_excited_builder
 		--eq.set_global("rng_spawn_wos","1",2,"H2");
 	end		
 end
@@ -112,7 +112,7 @@ function event_click_door(e)
     instance_id = eq.get_instance_id('anguish', 0);
     
     if (instance_id ~= nil and instance_id ~= 0) then
-      e.self:MovePCInstance(317, instance_id, -9, -2466, -79, 510); -- Zone: riwwi
+      e.self:MovePCInstance(317, instance_id, -9, -2466, -79, 510); -- Zone: anguish
 
     -- if GM just give him an instance
     elseif (e.self:Admin() >= 80 and e.self:GetGM()) then
@@ -141,14 +141,18 @@ function event_click_door(e)
         -- elseif (request.valid and request.flags == 0) then
         if (request.valid) then
           instance_id = eq.create_instance('anguish', 0, 21600);
-          eq.assign_raid_to_instance(instance_id);
+          if (instance_id == 0) then
+            e.self:Message(13, "Instance failed to be created, yell at a GM");
+          else
+            eq.assign_raid_to_instance(instance_id);
 
-          -- Set the lockout for the instance with the bits that represent the mobs that 
-          -- will be spawned by the zone_status upon entry
-          eq.set_global(instance_id.."_anguish_bit",tostring(request.flags),7,"H6");
+            -- Set the lockout for the instance with the bits that represent the mobs that 
+            -- will be spawned by the zone_status upon entry
+            eq.set_global(instance_id.."_anguish_bit",tostring(request.flags),7,"H6");
 
-          eq.cross_zone_message_player_by_name(5, "GMFizban", "Anguish -- Instance: " .. instance_id);
-          e.self:Message(14, "The door swings wide and allows you entrance to Anguish, the Fallen Palace.");
+            eq.cross_zone_message_player_by_name(5, "GMFizban", "Anguish -- Instance: " .. instance_id);
+            e.self:Message(14, "The door swings wide and allows you entrance to Anguish, the Fallen Palace.");
+          end
         end
       end
     end

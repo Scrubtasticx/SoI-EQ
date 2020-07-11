@@ -6,7 +6,7 @@ sub EVENT_SAY {
 	
 		if ($text=~/Hail/i)
 		{
-			if (($client->GetAAPoints >=2000) && ($ulevel == 65) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
 			{
 			$client->Message(315, " ");
 			$client->Message(315,"Hello, $name!  What an amazing world we live in. You have reached amazing Power. But there is more to learn for us all. You may now [$Ascend] ! ");
@@ -15,7 +15,7 @@ sub EVENT_SAY {
 			else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 65 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
 			$client->Message(315, " ");
 			}
 		}

@@ -7,10 +7,10 @@ sub EVENT_SAY {
     6 => "The next item I need is a snowball from Permafrost.",
     7 => "This last part will not be so easy. I need Kallis' Head.");
     
-    if ($text =~/Hail/i && $ulevel == 65 && !defined $qglobals{"Epic"}) {
+    if ($text =~/Hail/i && $ulevel == 60 && !defined $qglobals{"Epic"}) {
         plugin::Whisper("Hello $name, along my journies I have acquired knowledge on how to create a " . quest::saylink("Weapon", 1) . " with power like none seen before.");
-    } elsif ($text =~/Hail/i && $ulevel <= 64 && !defined $qglobals{"Epic"}) {
-        plugin::Whisper("Hello $name, I'm sorry but you must be level 65 to start your epic.");
+    } elsif ($text =~/Hail/i && $ulevel <= 59 && !defined $qglobals{"Epic"}) {
+        plugin::Whisper("Hello $name, I'm sorry but you must be level 60 to start your epic.");
     } elsif ($text=~/Hail/i && defined $qglobals{"Epic"}) {
         if ($qglobals{"Epic"} >= 1 && $qglobals{"Epic"} <= 7) {
             plugin::Whisper($responses{$qglobals{"Epic"}});
