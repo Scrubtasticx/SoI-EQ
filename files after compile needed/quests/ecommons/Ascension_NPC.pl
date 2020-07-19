@@ -6,18 +6,9 @@ sub EVENT_SAY {
 	
 		if ($text=~/Hail/i)
 		{
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
-			{
 			$client->Message(315, " ");
 			$client->Message(315,"Hello, $name!  What an amazing world we live in. You have reached amazing Power. But there is more to learn for us all. You may now [$Ascend] ! ");
 			$client->Message(315, " ");
-			}
-			else
-			{
-			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
-			$client->Message(315, " ");
-			}
 		}
 
 		my $rebirth = quest::saylink ("Rebirth", 1);
@@ -49,7 +40,7 @@ sub EVENT_SAY {
 
 		if ($text =~/Rebirth/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::say ("What would you like to become?");
 			$client->Message(315, " ");
@@ -63,14 +54,14 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 
 		if ($text =~/Bard/i){
 			
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(0, +1);
@@ -86,13 +77,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Beastlord/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(1, +1);
@@ -108,13 +99,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Berserker/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(0, +1);
@@ -130,13 +121,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Cleric/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(0, +1);
@@ -152,13 +143,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Druid/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(1, +2);
@@ -173,13 +164,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Enchanter/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(5, +2);
@@ -194,13 +185,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Mage/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(1, +2);
@@ -215,13 +206,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Monk/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(0, +1);
@@ -238,13 +229,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Necromancer/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(3, +2);
@@ -259,13 +250,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Paladin/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(0, +1);
@@ -282,13 +273,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Ranger/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(0, +1);
@@ -305,13 +296,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Rogue/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(2, +2);
@@ -326,13 +317,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Shadowknight/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(0, +1);
@@ -349,13 +340,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Shaman/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(1, +1);
@@ -371,13 +362,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Warrior/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(0, +1);
@@ -393,13 +384,13 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
 		if ($text =~/Wizard/i){
 		
-			if (($client->GetAAPoints >=2000) && ($ulevel == 60) && (defined $qglobals{"Epic"}))
+			if (($client->GetAAPoints >=2000) && ($ulevel == 60))
 			{
 			quest::level(1);
 			quest::incstat(1, +2);
@@ -414,7 +405,7 @@ sub EVENT_SAY {
 		else
 			{
 			$client->Message(315, " ");
-			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs and your Epic finished to ascend!");
+			$client->Message(315,"Hello, $name you must be level 60 with 2k unspent AAs to ascend!");
 			$client->Message(315, " ");
 			}
 		}
