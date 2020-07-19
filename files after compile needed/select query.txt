@@ -1,3 +1,21 @@
 SELECT le.* FROM items i 
 INNER JOIN lootdrop_entries le ON i.id = le.item_id 
 WHERE i.name like "Simple Defiant%"
+
+
+
+SELECT
+  npc_types.id,
+  npc_types.name,
+  npc_types.loottable_id,
+  spawnentry.spawngroupID
+FROM
+  npc_types
+LEFT JOIN
+  spawnentry
+ON
+  spawnentry.npcID = npc_types.id
+WHERE
+  npc_types.name
+LIKE
+  '%Fabled%';
