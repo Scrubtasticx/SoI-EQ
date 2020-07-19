@@ -4,12 +4,12 @@
 #############################
 sub ITEMLIST {
 # ItemID -> Cost -> TXT REMINDER OF ITEM -> Slot type -> Stack Size (1 default higher number for items with charges or stackables)
-# Slot type //1 = Food // 2= Drink // 3 = Leather // 4 = Utility // 5 = Accessory // 6 = Novelty // 7 = Expendable // 8 = Weapons
+# Slot type //1 = Novelty // 2= Utility // 3 = Craft Mats // 4 = Expendable
 
 	%IL = (
-	1 => [147495, 240, "Amazing Redemption Orb", 5, 1],
-	2 => [11646, 1000, "Amazing Redemption Orb", 4, 1],
-	3 => [10015, 5, "Malachite", 3, 20]
+	1 => [147495, 240, "Amazing Sleeper Orb", 4, 1],
+	2 => [11646, 1000, "Amulet of Necropotence", 1, 1],
+	3 => [10015, 5, "Malachite", 4, 20]
 	);
 }
 
@@ -17,19 +17,17 @@ sub EVENT_SAY
 {
 ITEMLIST(); #Load itemlist
 my %typetext = (
-		1 => "Food",
-		2 => "Drink",,
-		3 => "Utility",
-		4 => "Novelty",
-		5 => "Expendable",
+		1 => "Novelty",
+		2 => "Utility",
+		3 => "Craft Mats",
+		4 => "Expendable",
 		);
 my $empty = $client->GetItemIDAt(quest::getinventoryslotid("cursor"));   #Check cursor for an itemID will be HUGE number if INVALID or no item
 my $total = $client->GetAAPoints();
-my $Food = quest::saylink("Type 1",1,"Food"); #1
-my $Drink = quest::saylink("Type 2",1, "Drink"); #2
-my $Utility = quest::saylink("Type 3",1,"Utility"); #3
-my $Novelty = quest::saylink("Type 4",1,"Novelty");#4
-my $Expendable = quest::saylink("Type 5",1,"Expendable");#5
+my $Novelty = quest::saylink("Type 1",1,"Novelty"); #1
+my $Utility = quest::saylink("Type 2",1, "Utility"); #2
+my $Craft = quest::saylink("Type 3",1,"Craft Mats"); #3
+my $Expendable = quest::saylink("Type 4",1,"Expendable");#4
 
 	if($text=~/Hail/i)
     {
@@ -37,7 +35,7 @@ my $Expendable = quest::saylink("Type 5",1,"Expendable");#5
 		#$itemcost = undef;
 		plugin::Whisper("Hi there $name do you want to browse my items?");
 		$client->Message(315, " ");
-		$client->Message(315, "[ $Food ] , [ $Drink ] , [ $Utility ] , [ $Novelty ] , [ $Expendable ]");
+		$client->Message(315, "[ $Novelty ] , [ $Utility ] , [ $Craft ] , [ $Expendable ]");
 	}
 	elsif($text=~/^Type /i)
 	{
@@ -61,7 +59,7 @@ my $Expendable = quest::saylink("Type 5",1,"Expendable");#5
 				$n++;
 			}
 		$client->Message(315, "=============");
-		$client->Message(315, "[ $Food ] , [ $Drink ] , [ $Utility ] , [ $Novelty ] , [ $Expendable ]");
+		$client->Message(315, "[ $Novelty ] , [ $Utility ] , [ $Craft ] , [ $Expendable ]");
 		$client->Message(315, " ");	
 	}
 	######## Item Saylink Start
