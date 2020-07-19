@@ -214,7 +214,7 @@ function event_connect(e)
         if v[3] and (v[2] or age >= v[1]) then
             e.self:GrantAlternateAdvancementAbility(aa, 1)
 	if(qglobals["Ascend"] == nil) then
-			eq.set_global("CharMaxLevel", "60", 5, 'F');
+			eq.set_global("CharMaxLevel", "65", 5, 'F');
       end
     end
   end

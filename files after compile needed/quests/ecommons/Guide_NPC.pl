@@ -1,5 +1,13 @@
 sub EVENT_SAY{
+
+	my $go = quest::saylink("Go Home");
 	if($text=~/hail/i){
+	
+	plugin::Whisper ("Good day to you, $name. I can teleport you to you're home city, are you ready to [$go]?");
+}
+    if ($text =~/Go Home/i) {
+        quest::movepc(202, 344.321, 391.287, -126.81);
+		
 	my $TextToCenter = plugin::PWAutoCenter("Welcome to Return of the Sleeper");
 	my $TextToCenter2 = plugin::PWAutoCenter("All hotzones are in the Instance NPC");
 	my $TextToCenter3 = plugin::PWAutoCenter("We have tons of custom NPCs in our hub. For link to our website for spell file and forums. Click the discord link below");

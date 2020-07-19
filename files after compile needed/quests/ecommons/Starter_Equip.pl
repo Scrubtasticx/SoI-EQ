@@ -1,22 +1,22 @@
 sub EVENT_SAY 
 {
 my $Items = quest::saylink("Items");
-my %rewards = ("Warrior" => 1119, 
-    "Cleric" => 1119 , 
-    "Paladin" => 1119 , 
-    "Ranger" => 1096, 
-    "Shadowknight" => 1119 ,
-    "Druid" => 1119 , 
-    "Monk" => 1119 , 
-    "Bard" => 1119, 
-    "Rogue" => 1096, 
-    "Shaman" => 1119 , 
-    "Necromancer" => 1096, 
-    "Wizard" => 1096, 
-    "Magician" => 1096, 
-    "Enchanter" => 1096, 
-    "Beastlord" => 1119 , 
-    "Berserker" => 201042);
+my %rewards = ("Warrior" => 60332, 
+    "Cleric" => 20076 , 
+    "Paladin" => 48147 , 
+    "Ranger" => 62649, 
+    "Shadowknight" => 48136 ,
+    "Druid" => 62880 , 
+    "Monk" => 67742 , 
+    "Bard" => 77640, 
+    "Rogue" => 52347, 
+    "Shaman" => 57405 , 
+    "Necromancer" => 64067, 
+    "Wizard" => 16576, 
+    "Magician" => 19839, 
+    "Enchanter" => 52962, 
+    "Beastlord" => 57054 , 
+    "Berserker" => 18609);
 
 if($ulevel <= 15 && !defined($qglobals{startitems})){
 	if($text=~/Hail/i) 
@@ -26,7 +26,6 @@ if($ulevel <= 15 && !defined($qglobals{startitems})){
 	elsif($text=~/Items/i)
 	{
 		quest::summonitem(1266);
-		quest::summonitem(1079);
 		quest::summonitem($rewards{$class});
 		quest::setglobal("startitems", ($qglobals{"starteritems"} + 1), 5, "F");
 	}
