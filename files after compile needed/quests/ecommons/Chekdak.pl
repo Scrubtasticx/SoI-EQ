@@ -1,47 +1,48 @@
 sub EVENT_SAY {
-$armour = quest::saylink("armour");
+$armor = quest::saylink("armor");
 $materials = quest::saylink("materials");
+
 	if($text=~/hail/i) {
-		plugin::Whisper("Hail $class. Do you seek to earn some $armour?");
+		plugin::Whisper("Hail $class. Do you seek to earn some $armor?");
 	} 
-	elsif($text=~/armour/i) {
+	elsif($text=~/armor/i) {
 		plugin::Whisper("I can make you armor provided you have the proper $materials for me.");
 	}
 	elsif($text=~/materials/i) {
-		plugin::Whisper(" Bring me a armor $Link_pattern and a $Link_crafting piece.");
+		plugin::Whisper(" Bring me a Illuminated Armor Pattern and a Illuminated Remnant.");
 	} 
 }
 
 sub EVENT_ITEM {
 %ItemDB = (
-	1387 => { "ReqItem1" => 1458, "ReqItem2" => 1380}, #Plate Boots
-	1386 => { "ReqItem1" => 1458, "ReqItem2" => 1374}, #Plate Arms
-	1384 => { "ReqItem1" => 1458, "ReqItem2" => 1375}, #Plate Wrist
-	1386 => { "ReqItem1" => 1458, "ReqItem2" => 1379}, #Plate Hands
-	1389 => { "ReqItem1" => 1458, "ReqItem2" => 1373}, #Plate Head
-	1388 => { "ReqItem1" => 1458, "ReqItem2" => 1381}, #Plate Legs
-	1383 => { "ReqItem1" => 1458, "ReqItem2" => 1382}, #Plate Chest
-	1391 => { "ReqItem1" => 1503, "ReqItem2" => 1380}, #Leather boots
-	1399 => { "ReqItem1" => 1503, "ReqItem2" => 1374}, #Leather arms
-	1392 => { "ReqItem1" => 1503, "ReqItem2" => 1375}, #Leather wrists
-	1394 => { "ReqItem1" => 1503, "ReqItem2" => 1379}, #Leather hands
-	1396 => { "ReqItem1" => 1503, "ReqItem2" => 1373}, #Leather head
-	1395 => { "ReqItem1" => 1503, "ReqItem2" => 1381}, #Leather legs
-	1393 => { "ReqItem1" => 1503, "ReqItem2" => 1382}, #Leather Chest
-	1434 => { "ReqItem1" => 1450, "ReqItem2" => 1380}, #chain boots
-	1432 => { "ReqItem1" => 1450, "ReqItem2" => 1374}, #chain arms
-	1435 => { "ReqItem1" => 1450, "ReqItem2" => 1375}, #chain wrists
-	1439 => { "ReqItem1" => 1450, "ReqItem2" => 1379}, #chain hands
-	1440 => { "ReqItem1" => 1450, "ReqItem2" => 1373}, #chain head
-	1441 => { "ReqItem1" => 1450, "ReqItem2" => 1381}, #chain legs
-	1436 => { "ReqItem1" => 1450, "ReqItem2" => 1382}, #chain Chest
-	1443 => { "ReqItem1" => 1502, "ReqItem2" => 1380}, #silk boots
-	1442 => { "ReqItem1" => 1502, "ReqItem2" => 1374}, #silk arms
-	1445 => { "ReqItem1" => 1502, "ReqItem2" => 1375}, #silk wrists
-	1447 => { "ReqItem1" => 1502, "ReqItem2" => 1379}, #silk hands
-	1449 => { "ReqItem1" => 1502, "ReqItem2" => 1373}, #silk head
-	1448 => { "ReqItem1" => 1502, "ReqItem2" => 1381}, #silk legs
-	1446 => { "ReqItem1" => 1502, "ReqItem2" => 1382} #silk Chest
+	201014 => { "ReqItem1" => 201042, "ReqItem2" => 201043}, #Plate Helm
+	201015 => { "ReqItem1" => 201042, "ReqItem2" => 201044}, #Plate Chest
+	201016 => { "ReqItem1" => 201042, "ReqItem2" => 201045}, #Plate Wrist
+	201017 => { "ReqItem1" => 201042, "ReqItem2" => 201046}, #Plate Arms
+	201018 => { "ReqItem1" => 201042, "ReqItem2" => 201047}, #Plate Legs
+	201019 => { "ReqItem1" => 201042, "ReqItem2" => 201048}, #Plate Boots
+	201020 => { "ReqItem1" => 201042, "ReqItem2" => 201049}, #Plate Gloves
+	201021 => { "ReqItem1" => 201042, "ReqItem2" => 201050}, #Leather Helm
+	201022 => { "ReqItem1" => 201042, "ReqItem2" => 201051}, #Leather Chest
+	201023 => { "ReqItem1" => 201042, "ReqItem2" => 201052}, #Leather Wrist
+	201024 => { "ReqItem1" => 201042, "ReqItem2" => 201053}, #Leather Arms
+	201025 => { "ReqItem1" => 201042, "ReqItem2" => 201054}, #Leather Legs
+	201026 => { "ReqItem1" => 201042, "ReqItem2" => 201055}, #Leather Boots
+	201027 => { "ReqItem1" => 201042, "ReqItem2" => 201056}, #Leather Gloves
+	201007 => { "ReqItem1" => 201042, "ReqItem2" => 201057}, #Chain Helm
+	201008 => { "ReqItem1" => 201042, "ReqItem2" => 201058}, #Chain Chest
+	201009 => { "ReqItem1" => 201042, "ReqItem2" => 201059}, #Chain Wrist
+	201010 => { "ReqItem1" => 201042, "ReqItem2" => 201060}, #Chain Arms
+	201011 => { "ReqItem1" => 201042, "ReqItem2" => 201061}, #Chain Legs
+	201012 => { "ReqItem1" => 201042, "ReqItem2" => 201062}, #Chain Boots
+	201013 => { "ReqItem1" => 201042, "ReqItem2" => 201063}, #Chain Gloves
+	201000 => { "ReqItem1" => 201042, "ReqItem2" => 201064}, #Silk Helm
+	201001 => { "ReqItem1" => 201042, "ReqItem2" => 201065}, #Silk Chest
+	201002 => { "ReqItem1" => 201042, "ReqItem2" => 201066}, #Silk Wrist
+	201003 => { "ReqItem1" => 201042, "ReqItem2" => 201067}, #Silk Arms
+	201004 => { "ReqItem1" => 201042, "ReqItem2" => 201068}, #Silk Legs
+	201005 => { "ReqItem1" => 201042, "ReqItem2" => 201069}, #Silk Boots
+	201006 => { "ReqItem1" => 201042, "ReqItem2" => 201070} #Silk Gloves
 );
 			foreach $id (sort keys %ItemDB)
 			{
