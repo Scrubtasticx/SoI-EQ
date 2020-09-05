@@ -11,7 +11,10 @@ sub ITEMLIST {
 	2 => [11646, 500, "Amulet of Necropotence", 1, 1],
 	3 => [71026, 1000, "Polymorph Wand: Runic Tattoo Nihil - Male", 1, 1],
 	4 => [71025, 1000, "Polymorph Wand: Runic Tattoo Nihil - Female", 1, 1],
-	5 => [10015, 5, "Malachite", 4, 20]
+	5 => [10015, 5, "Malachite", 4, 20],
+	6 => [147503, 60000, "Ultimate Weapon Aug", 2, 1],
+	7 => [147504 , 1575, "Bite of the Dark Serpent", 2, 1],
+	8 => [147505 , 1500, "Whippa", 2, 1],
 	);
 }
 
