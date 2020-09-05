@@ -1,13 +1,16 @@
 /*	EQEMu: Everquest Server Emulator
 	Copyright (C) 2001-2004 EQEMu Development Team (http://eqemu.org)
+
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation; version 2 of the License.
+
 	This program is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY except by those people which sell it, which
 	are required to give you total support for your newly bought product;
 	without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
@@ -24,6 +27,7 @@
 
 #include "pets.h"
 #include "zonedb.h"
+#include "zone_store.h"
 
 #include <string>
 
@@ -160,11 +164,13 @@ void GetRandPetName(char *name)
 			break;
 		}
 	}
+
 	if (multiplier == 0)
 	{
 		LogFile->write(EQEMuLog::Error, "Multiplier == 0 in CalcPetHp,using Generic....");;
 		multiplier=12;
 	}
+
 	base_hp = 5 + (multiplier*levelb) + ((multiplier*levelb*STA) + 1)/300;
 	return base_hp;
 }
@@ -206,14 +212,14 @@ void Mob::MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower,
 
 	//lookup our pets table record for this type
 	PetRecord record;
-	if(!database.GetPoweredPetEntry(pettype, act_power, &record)) {
+	if(!content_db.GetPoweredPetEntry(pettype, act_power, &record)) {
 		Message(Chat::Red, "Unable to find data for pet %s", pettype);
 		LogError("Unable to find data for pet [{}], check pets table", pettype);
 		return;
 	}
 
 	//find the NPC data for the specified NPC type
-	const NPCType *base = database.LoadNPCTypesData(record.npc_type);
+	const NPCType *base = content_db.LoadNPCTypesData(record.npc_type);
 	if(base == nullptr) {
 		Message(Chat::Red, "Unable to load NPC data for pet %s", pettype);
 		LogError("Unable to load NPC data for pet [{}] (NPC ID [{}]), check pets and npc_types tables", pettype, record.npc_type);
@@ -225,7 +231,7 @@ void Mob::MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower,
 	memcpy(npc_type, base, sizeof(NPCType));
 
 	// If pet power is set to -1 in the DB, use stat scaling
-	if ((this->IsClient() 
+	if ((this->IsClient()
 #ifdef BOTS
 		|| this->IsBot()
 #endif
@@ -307,64 +313,24 @@ void Mob::MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower,
 			npc_type->size *= 2.5f;
 			break;
 		case OGRE:
-			npc_type->race = 560;
-			npc_type->texture = 0;
-			npc_type->size *= 0.8f;
-//			npc_type->race = BEAR;
-//			npc_type->texture = 3;
-//			npc_type->gender = 2;
+			npc_type->race = BEAR;
+			npc_type->texture = 3;
+			npc_type->gender = 2;
 			break;
 		case BARBARIAN:
-			npc_type->race = 482;
+			npc_type->race = WOLF;
 			npc_type->texture = 2;
-			npc_type->size *= 0.8f;
-//			npc_type->race = WOLF;
-//			npc_type->texture = 2;
 			break;
 		case IKSAR:
-			npc_type->race = 129;
+			npc_type->race = WOLF;
 			npc_type->texture = 0;
-			npc_type->size *= 0.8f;
-//			npc_type->race = WOLF;
-//			npc_type->gender = 1;
-//			npc_type->size *= 2.0f;
-//			npc_type->luclinface = 0;
-			break;
-		case DWARF:
-			npc_type->race = 436;
-			npc_type->texture = 0;
-			npc_type->size *= 0.8f;
-			break;
-		case GNOME:
-			npc_type->race = 38;
-			npc_type->texture = 3;
-			npc_type->size *= 0.8f;
-			break;
-		case HALFLING:
-			npc_type->race = 559;
-			npc_type->texture = 0;
-			npc_type->size *= 0.8f;
-			break;
-		case HIGH_ELF:
-			npc_type->race = 154;
-			npc_type->texture = 0;
-			npc_type->size *= 0.8f;
-			break;
-		case DARK_ELF:
-			npc_type->race = 441;
-			npc_type->texture = 0;
-			npc_type->size *= 0.8f;
-			break;
-		case FROGLOK:
-			npc_type->race = 316;
-			npc_type->texture = 0;
-			npc_type->size *= 0.8f;
+			npc_type->gender = 1;
+			npc_type->size *= 2.0f;
+			npc_type->luclinface = 0;
 			break;
 		default:
-			npc_type->race = 482;
+			npc_type->race = WOLF;
 			npc_type->texture = 0;
-//			npc_type->race = WOLF;
-//			npc_type->texture = 0;
 		}
 	}
 
@@ -383,7 +349,7 @@ void Mob::MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower,
 									"130, 139, 141, 183, 236, 237, 238, 239, 254, 266, 329, 330, 378, 379, "
 									"380, 381, 382, 383, 404, 522) "
 									"ORDER BY RAND() LIMIT 1", zone->GetShortName());
-		auto results = database.QueryDatabase(query);
+		auto results = content_db.QueryDatabase(query);
 		if (!results.Success()) {
 			safe_delete(npc_type);
 			return;
@@ -399,7 +365,7 @@ void Mob::MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower,
 			monsterid = 567;
 
 		// give the summoned pet the attributes of the monster we found
-		const NPCType* monster = database.LoadNPCTypesData(monsterid);
+		const NPCType* monster = content_db.LoadNPCTypesData(monsterid);
 		if(monster) {
 			npc_type->race = monster->race;
 			npc_type->size = monster->size;
@@ -424,11 +390,11 @@ void Mob::MakePoweredPet(uint16 spell_id, const char* pettype, int16 petpower,
 	memset(petinv, 0, sizeof(petinv));
 	const EQ::ItemData *item = nullptr;
 
-	if (database.GetBasePetItems(record.equipmentset, petinv)) {
+	if (content_db.GetBasePetItems(record.equipmentset, petinv)) {
 		for (int i = EQ::invslot::EQUIPMENT_BEGIN; i <= EQ::invslot::EQUIPMENT_END; i++)
 			if (petinv[i]) {
 				item = database.GetItem(petinv[i]);
-				npc->AddLootDrop(item, &npc->itemlist, 0, 1, 127, true, true);
+				npc->AddLootDrop(item, &npc->itemlist, NPC::NewLootDropEntry(), true);
 			}
 	}
 
@@ -648,18 +614,18 @@ void NPC::SetPetState(SpellBuff_Struct *pet_buffs, uint32 *items) {
 
 	//restore their equipment...
 	for (i = EQ::invslot::EQUIPMENT_BEGIN; i <= EQ::invslot::EQUIPMENT_END; i++) {
-		if(items[i] == 0)
+		if (items[i] == 0) {
 			continue;
+		}
 
-		const EQ::ItemData* item2 = database.GetItem(items[i]);
+		const EQ::ItemData *item2 = database.GetItem(items[i]);
 
 		if (item2) {
-			bool noDrop=(item2->NoDrop == 0); // Field is reverse logic
-			bool petCanHaveNoDrop = (RuleB(Pets, CanTakeNoDrop) && 
-				_CLIENTPET(this) && GetPetType() <= petOther);
+			bool noDrop           = (item2->NoDrop == 0); // Field is reverse logic
+			bool petCanHaveNoDrop = (RuleB(Pets, CanTakeNoDrop) && _CLIENTPET(this) && GetPetType() <= petOther);
 
 			if (!noDrop || petCanHaveNoDrop) {
-				AddLootDrop(item2, &itemlist, 0, 1, 255, true, true);
+				AddLootDrop(item2, &itemlist, NPC::NewLootDropEntry(), true);
 			}
 		}
 	}

@@ -213,9 +213,9 @@ function event_connect(e)
     for aa, v in pairs(vet_aa) do
         if v[3] and (v[2] or age >= v[1]) then
             e.self:GrantAlternateAdvancementAbility(aa, 1)
-	if(qglobals["Ascend"] == nil) then
-			eq.set_global("CharMaxLevel", "65", 5, 'F');
-      end
+--	if(qglobals["Ascend"] == nil) then
+--			eq.set_global("CharMaxLevel", "60", 5, 'F');
+--     end
     end
   end
 end
@@ -301,31 +301,21 @@ end
 76 /*13049*/  SkillTripleAttack,
 ]]--
 
---  function event_level_up(e)
-	--local skills = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 48, 49, 50, 51, 52, 53, 54, 56, 62, 66, 67, 70, 71, 72, 73, 74 };
-	--for i, curskill in ipairs(skills) do
-		--local maxskill = e.self:MaxSkill(curskill);
-		--if (e.self:CanHaveSkill(curskill) == false) then
+    function event_level_up(e)
+	local skills = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 48, 49, 50, 51, 52, 53, 54, 56, 62, 66, 67, 70, 71, 72, 73, 74 };
+	for i, curskill in ipairs(skills) do
+		local maxskill = e.self:MaxSkill(curskill);
+		if (e.self:CanHaveSkill(curskill) == false) then
 			--Do nothing...
-		--elseif (maxskill <= e.self:GetRawSkill(curskill)) then
+		elseif (maxskill <= e.self:GetRawSkill(curskill)) then
 			--Do nothing...
-		--else
+		else
 			--Train!
-			--e.self:SetSkill(curskill, maxskill);
-  -- Scribe all spells up to current level
-	--eq.scribe_spells(e.self:GetLevel());
-
-	-- Train all disciplines up to current level
---	eq.train_discs(e.self:GetLevel());
-
-function event_level_up(e)
-  local free_skills =  {0,1,2,3,4,5,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,29,30,31,32,33,34,36,37,38,39,41,42,43,44,45,46,47,49,51,52,54,67,70,71,72,73,74,76};
-
-  for k,v in ipairs(free_skills) do
-    if ( e.self:MaxSkill(v) > 0 and e.self:GetRawSkill(v) < 1 and e.self:CanHaveSkill(v) ) then 
-      e.self:SetSkill(v, 1);
-    end
-      
-  end
-  
+			e.self:SetSkill(curskill, maxskill);
+			--   Scribe all spells up to current level
+			eq.scribe_spells(e.self:GetLevel());
+			--	 Train all disciplines up to current level
+			eq.train_discs(e.self:GetLevel());
+		end
+	end
 end

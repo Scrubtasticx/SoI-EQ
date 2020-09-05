@@ -52,6 +52,7 @@ RULE_BOOL(Character, LeaveCorpses, true, "Setting whether you leave a corpse beh
 RULE_BOOL(Character, LeaveNakedCorpses, false, "Setting whether you leave a corpse without items")
 RULE_INT(Character, MaxDraggedCorpses, 2, "Maximum number of corpses you can drag at once")
 RULE_REAL(Character, DragCorpseDistance, 400, "If a player is using /corpsedrag and moving, the corpse will not move until the player exceeds this distance")
+RULE_REAL(Character, FinalExpMultiplier, 1, "Added on top of everything else, easy for setting EXP events")
 RULE_REAL(Character, ExpMultiplier, 0.5, "If greater than 0, the experience gained is multiplied by this value. ")
 RULE_REAL(Character, AAExpMultiplier, 0.5, "If greater than 0, the AA experience gained is multiplied by this value. ")
 RULE_REAL(Character, GroupExpMultiplier, 0.5, "The experience in a group is multiplied by this value in addition to the group multiplier. The group multiplier is: 2 members=x 1.2, 3=x1.4, 4=x1.6, 5=x1.8, 6=x2.16")
@@ -391,6 +392,7 @@ RULE_BOOL(Spells, NPCSpellPush, false, "Enable spell push on NPCs")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Combat)
+RULE_REAL(Combat, AERampageSafeZone, 0.018, "max hit ae ramp reduction range")
 RULE_INT(Combat, PetBaseCritChance, 0, "Pet base crit chance")
 RULE_INT(Combat, NPCBashKickLevel, 6, "The level that NPCcan KICK/BASH")
 RULE_INT(Combat, NPCBashKickStunChance, 15, "Percent chance that a bash/kick will stun")
@@ -492,6 +494,7 @@ RULE_INT(Combat, NPCAssistCap, 5, "Maxiumium number of NPCthat will assist anoth
 RULE_INT(Combat, NPCAssistCapTimer, 6000, "Time a NPC will take to clear assist aggro cap space (milliseconds)")
 RULE_BOOL(Combat, UseRevampHandToHand, false, "Use h2h revamped dmg/delays I believe this was implemented during SoF")
 RULE_BOOL(Combat, ClassicMasterWu, false, "Classic master wu uses a random special, modern doesn't")
+RULE_REAL(Combat, HitBoxMod, 1.00, "Added to test hit boxes.")
 RULE_INT(Combat, LevelToStopDamageCaps, 0, "Level to stop damage caps. 1 will effectively disable them, 20 should give basically same results as old incorrect system")
 RULE_INT(Combat, LevelToStopACTwinkControl, 50, "Level to stop armorclass twink control. 1 will effectively disable it, 50 should give basically same results as current system")
 RULE_BOOL(Combat, ClassicNPCBackstab, false, "True disables npc facestab - NPCget normal attack if not behind")
@@ -686,6 +689,7 @@ RULE_BOOL(AA, ModernAAScalingEnabled, false, "Are we linearly scaling AA experie
 RULE_REAL(AA, ModernAAScalingStartPercent, 1000, "1000% or 10x AA experience at the start of the scaling range")
 RULE_INT(AA, ModernAAScalingAAMinimum, 0, "The minimum number of earned AA before AA experience scaling begins")
 RULE_INT(AA, ModernAAScalingAALimit, 4000, "The number of earned AA when AA experience scaling ends")
+RULE_BOOL(AA, SoundForAAEarned, false, "Play sound when AA point earned")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Console)
@@ -767,6 +771,10 @@ RULE_BOOL(HotReload, QuestsRepopWithReload, true, "When a hot reload is triggere
 RULE_BOOL(HotReload, QuestsRepopWhenPlayersNotInCombat, true, "When a hot reload is triggered, the zone will repop when no clients are in combat")
 RULE_BOOL(HotReload, QuestsResetTimersWithReload, true, "When a hot reload is triggered, quest timers will be reset")
 RULE_BOOL(HotReload, QuestsAutoReloadGlobalScripts, false, "When a quest, plugin, or global script changes, auto reload.")
+RULE_CATEGORY_END()
+
+RULE_CATEGORY(Expansion)
+RULE_INT(Expansion, CurrentExpansion, -1, "The current expansion enabled for the server [-1 = ALL, 0 = Classic, 1 = Kunark etc.]")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Instances)
