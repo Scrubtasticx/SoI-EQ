@@ -13,8 +13,12 @@ sub ITEMLIST {
 	4 => [71025, 1000, "Polymorph Wand: Runic Tattoo Nihil - Female", 1, 1],
 	5 => [10015, 5, "Malachite", 4, 20],
 	6 => [147503, 60000, "Ultimate Weapon Aug", 2, 1],
-	7 => [147504 , 1575, "Bite of the Dark Serpent", 2, 1],
-	8 => [147505 , 1500, "Whippa", 2, 1],
+	7 => [147513, 60000, "Ultimate Armor Aug", 2, 1],
+	8 => [147514, 60000, "Ultimate Caster Aug", 2, 1],
+	9 => [147516, 3250, "Smash Errything", 2, 1],
+	10 => [147515, 1750, "Stomp yer Face", 2, 1],
+	11 => [147504 , 1575, "Bite of the Dark Serpent", 2, 1],
+	12 => [147505 , 1500, "Whippa", 2, 1]
 	);
 }
 
