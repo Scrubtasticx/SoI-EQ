@@ -27,7 +27,7 @@ sub EVENT_ITEM {
     "Wizard" => 16576, 
     "Magician" => 19839, 
     "Enchanter" => 52962, 
-    "Beastlord" => 57054, 
+    "Beastlord" => 52911, 
     "Berserker" => 18609);
     if (!defined $qglobals{"Epic-1.5"}) {
         if (plugin::check_handin(\%itemcount, 147565 => 1)) {
