@@ -301,6 +301,18 @@ end
 76 /*13049*/  SkillTripleAttack,
 ]]--
 
+function event_enter_zone(e)
+    local key = e.self:CharacterID() .. "-texture";
+    local texture = eq.get_data(key);
+    if (texture == "leather") then
+        e.self:SetTexture(1);
+    elseif (texture == "chain") then
+        e.self:SetTexture(2);
+    elseif (texture == "plate") then
+		e.self:SetTexture(3);
+    end
+end
+
     function event_level_up(e)
 	local skills = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 48, 49, 50, 51, 52, 53, 54, 56, 62, 66, 67, 70, 71, 72, 73, 74 };
 	for i, curskill in ipairs(skills) do
