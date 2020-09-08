@@ -11,18 +11,22 @@ sub EVENT_SAY {
             $key   = $client->CharacterID() . "-texture";
             #:: Delete the key
             quest::delete_data($key);
+			quest::playertexture(0);
         }
         elsif ($text=~/leather/i) {
             $key   = $client->CharacterID() . "-texture";
             #:: Set the key value to 'leather'
             quest::set_data($key, "leather");
+			quest::playertexture(1);
         }
         elsif ($text=~/chain/i) {
             $key   = $client->CharacterID() . "-texture";
             quest::set_data($key, "chain");
+			quest::playertexture(2);
         }
         elsif ($text=~/plate/i) {
             $key   = $client->CharacterID() . "-texture";
             quest::set_data($key, "plate");
+			quest::playertexture(3);
         }
     }
