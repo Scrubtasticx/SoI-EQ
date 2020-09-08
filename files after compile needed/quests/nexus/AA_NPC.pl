@@ -8,17 +8,20 @@ sub ITEMLIST {
 
 	%IL = (
 	1 => [147502, 240, "Amazing Sleeper Orb", 4, 1],
-	2 => [11646, 500, "Amulet of Necropotence", 1, 1],
-	3 => [71026, 1000, "Polymorph Wand: Runic Tattoo Nihil - Male", 1, 1],
-	4 => [71025, 1000, "Polymorph Wand: Runic Tattoo Nihil - Female", 1, 1],
-	5 => [10015, 5, "Malachite", 4, 20],
-	6 => [147503, 60000, "Ultimate Weapon Aug", 2, 1],
-	7 => [147513, 60000, "Ultimate Armor Aug", 2, 1],
-	8 => [147514, 60000, "Ultimate Caster Aug", 2, 1],
-	9 => [147516, 3250, "Smash Errything", 2, 1],
-	10 => [147515, 1750, "Stomp yer Face", 2, 1],
-	11 => [147504 , 1575, "Bite of the Dark Serpent", 2, 1],
-	12 => [147505 , 1500, "Whippa", 2, 1]
+	2 => [147502, 1200, "Amazing Sleeper Orb", 4, 10],
+	3 => [11646, 500, "Amulet of Necropotence", 1, 1],
+	4 => [71026, 1000, "Polymorph Wand: Runic Tattoo Nihil - Male", 1, 1],
+	5 => [71025, 1000, "Polymorph Wand: Runic Tattoo Nihil - Female", 1, 1],
+	6 => [79911 , 150, "Orum", 4, 10],
+	7 => [147503, 60000, "Ultimate Weapon Aug", 2, 1],
+	8 => [147513, 60000, "Ultimate Armor Aug", 2, 1],
+	9 => [147514, 60000, "Ultimate Caster Aug", 2, 1],
+	10 => [147516, 3250, "Smash Errything", 2, 1],
+	11 => [147515, 1750, "Stomp yer Face", 2, 1],
+	12 => [147504 , 1575, "Bite of the Dark Serpent", 2, 1],
+	13 => [147505 , 1500, "Whippa", 2, 1],
+	14 => [10015, 5, "Malachite", 4, 20]
+	
 	);
 }
 
