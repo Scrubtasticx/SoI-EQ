@@ -4,7 +4,7 @@ quest::shout("My Lands My Domain. Flee you filth.");
 }
 
 sub EVENT_AGGRO {
-quest::say("You can NEVARUN!");
+quest::shout("$name You can NEVARUN!");
 quest::settimer(1,30);
 }
 
@@ -53,15 +53,15 @@ quest::setnexthpevent(70);
 
 if($hpevent == 70) {
 	$npc->CastSpell(15975, $mobid, 10, -1);
-	quest::modifynpcstat("min_hit", 150);
-	quest::modifynpcstat("max_hit", 250);
+	quest::modifynpcstat("min_hit", 600);
+	quest::modifynpcstat("max_hit", 1000);
 	quest::setnexthpevent(51);
 }
 
 if($hpevent == 51) {
 	$npc->BuffFadeBySpellID(15975);
- 	quest::modifynpcstat("min_hit", 50);
-	quest::modifynpcstat("max_hit", 150);
+ 	quest::modifynpcstat("min_hit", 580);
+	quest::modifynpcstat("max_hit", 885);
 	quest::setnexthpevent(50);
 }
 
@@ -87,8 +87,8 @@ if($hpevent == 50) {
   if($hpevent == 30) {
   
     $npc->CastSpell(15975, $mobid, 10, -1);
-  	quest::modifynpcstat("min_hit", 150);
-	quest::modifynpcstat("max_hit", 250);
+  	quest::modifynpcstat("min_hit", 800);
+	quest::modifynpcstat("max_hit", 1250);
 
 	$guardian1 = quest::spawn2(15091,0,0,$x,$y,$z,0);
 	$guardian2 = quest::spawn2(15091,0,0,$x,$y,$z,0);
