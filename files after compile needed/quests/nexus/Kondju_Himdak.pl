@@ -8,7 +8,7 @@ sub EVENT_SAY {
             $client->Message(0, "Hello $name, I'm sorry but you have your epic 1.5");
         }
     }
-    elsif ($text=~/^Weapon$/i) {
+    elsif ($text=~/^Weapon$/i && !quest::get_data($key)) {
         $client->Message(0, "In order for me to make you this special weapon I need a orb from a vampire, and you epic 1.0.");
     }
 }
@@ -35,11 +35,11 @@ sub EVENT_ITEM {
 );
 	foreach $id (sort keys %ItemDB)
 			{
-    if (!defined $qglobals{"Epic-1.5"}) {
+    if (!quest::get_data($key)) {
         if(plugin::check_handin(\%itemcount, $ItemDB{$id}{"ReqItem1"} => 1, $ItemDB{$id}{"ReqItem2"} => 1)) {
             quest::summonitem($rewards{$class});
             quest::set_data($key, "1.5");
-			plugin::Whisper("Congrats on your weapon.");
+			$client->Message(0,"Congrats on your weapon.");
         }
     }
 }	
