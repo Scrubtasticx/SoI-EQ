@@ -37,7 +37,7 @@ sub EVENT_ITEM {
 			{
     if (!quest::get_data($key)) {
         if(plugin::check_handin(\%itemcount, $ItemDB{$id}{"ReqItem1"} => 1, $ItemDB{$id}{"ReqItem2"} => 1)) {
-            quest::summonitem($rewards{$class});
+            quest::summonitem($id);
             quest::set_data($key, "1.5");
 			$client->Message(0,"Congrats on your weapon.");
         }
