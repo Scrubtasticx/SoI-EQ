@@ -1,11 +1,11 @@
 sub EVENT_SAY {   
     if ($text=~/hail/i) {
-        $key = $client->CharacterID() . "-Epic-status";
+        $key = $client->CharacterID() . "-Epic-1.5";
         if (!quest::get_data($key)) {
-            $client->Message(0, "Hello $name, I'm sorry but you have your epic 1.5");
+            $client->Message(0, "Hello $name, along my journies I have acquired knowledge on how to create a " . quest::saylink("Weapon", 1) . " with power like none seen before.");
         }
         else {
-            $client->Message(0, "Hello $name, along my journies I have acquired knowledge on how to create a " . quest::saylink("Weapon", 1) . " with power like none seen before.");
+            $client->Message(0, "Hello $name, I'm sorry but you have your epic 1.5");
         }
     }
     elsif ($text=~/^Weapon$/i) {
