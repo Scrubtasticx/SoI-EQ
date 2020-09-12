@@ -1,12 +1,15 @@
-sub EVENT_SAY {
-    
-    if ($text =~/Hail/i && !defined $qglobals{"Epic-1.5"}) {
-        plugin::Whisper("Hello $name, along my journies I have acquired knowledge on how to create a " . quest::saylink("Weapon", 1) . " with power like none seen before.");
-    } elsif ($text =~/Hail/i && defined $qglobals{"Epic-1.5"}) {
-        plugin::Whisper("Hello $name, I'm sorry but you have your epic 1.5");
-    } 
-    if ($text=~/^Weapon$/i) {
-        plugin::Whisper("In order for me to make you this special weapon I need a orb from a vampire, and you epic 1.0.");
+sub EVENT_SAY {   
+    if ($text=~/hail/i) {
+        $key = $client->CharacterID() . "-Epic-status";
+        if (!quest::get_data($key)) {
+            $client->Message(0, "Hello $name, I'm sorry but you have your epic 1.5");
+        }
+        else {
+            $client->Message(0, "Hello $name, along my journies I have acquired knowledge on how to create a " . quest::saylink("Weapon", 1) . " with power like none seen before.");
+        }
+    }
+    elsif ($text=~/^Weapon$/i) {
+        $client->Message(0, "In order for me to make you this special weapon I need a orb from a vampire, and you epic 1.0.");
     }
 }
 
@@ -35,7 +38,7 @@ sub EVENT_ITEM {
     if (!defined $qglobals{"Epic-1.5"}) {
         if(plugin::check_handin(\%itemcount, $ItemDB{$id}{"ReqItem1"} => 1, $ItemDB{$id}{"ReqItem2"} => 1)) {
             quest::summonitem($rewards{$class});
-            quest::setglobal("Epic-1.5", 1, 5, "F");
+            quest::set_data($key, "1.5");
 			plugin::Whisper("Congrats on your weapon.");
         }
     }
