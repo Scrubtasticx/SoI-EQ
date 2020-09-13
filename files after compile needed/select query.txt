@@ -21,6 +21,12 @@ LIKE
   '%Fabled%';
   
   
+SELECT @zone_short := 'oldblackburrow';
+SELECT `a`.* FROM `npc_types` `a`
+INNER JOIN `spawnentry` `b` ON `b`.`npcID` = `a`.`id`
+INNER JOIN `spawn2` `c` ON `c`.`spawngroupID` = `b`.`spawngroupID` AND `c`.`zone` LIKE @zone_short
+  
+  
   
   
   
