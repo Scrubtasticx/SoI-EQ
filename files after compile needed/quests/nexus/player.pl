@@ -1,4 +1,6 @@
 sub EVENT_ENTERZONE {
+#@races = (464,466,469,458,467,454,367,420,);
+#	quest::playerrace(quest::ChooseRandom(@races));
     quest::settimer(1,30);
 }
 
