@@ -3,6 +3,8 @@ if($Config{osname}=~/linux/i){ $OS = "Linux"; }
 if($Config{osname}=~/Win|MS/i){ $OS = "Windows"; }
 
 opendir my $dir, "logs/crashes";
+
+
 my @files = readdir $dir;
 closedir $dir;
 $inc = 0;
@@ -11,14 +13,14 @@ foreach my $val (@files){
 		$stl = 0;
 		$crash[$inc] = "";
 		my $file = "logs/crashes/" . $val;
-		open my $info, $file or die "Could not open $file: $!"; 
+		open my $info, $file or die "Could not open $file: $!";
 		while( my $line = <$info>)  {
 			# print $line;
 			if($line=~/CRTStartup/i){ $stl = 0; }
 			@data = split('\[Crash\]', $line);
 			if($stl == 1){ $crash[$inc] .= $data[1]; }
 			if($line=~/dbghelp.dll/i){ $stl = 1; }
-		} 
+		}
 		close $info;
 		$inc++;
 	}
@@ -37,10 +39,10 @@ open (FILE, '> logs/crashes/report_summary.txt');
 $i = 0;
 while($crash[$i]){
 	if($unique_crash_tracker[length($crash[$i])] != 1){
-		print "Crash Occurrence " . $crash_count[length($crash[$i])] . " Time(s) Length (" . length($crash[$i]) .  ") \n\n"; 
+		print "Crash Occurrence " . $crash_count[length($crash[$i])] . " Time(s) Length (" . length($crash[$i]) .  ") \n\n";
 		print $crash[$i] . "\n";
 		print "=========================================\n";
-		print FILE "Crash Occurrence " . $crash_count[length($crash[$i])] . " Time(s) Length (" . length($crash[$i]) .  ") \n\n"; 
+		print FILE "Crash Occurrence " . $crash_count[length($crash[$i])] . " Time(s) Length (" . length($crash[$i]) .  ") \n\n";
 		print FILE $crash[$i] . "\n";
 		print FILE "=========================================\n";
 	}
@@ -51,7 +53,7 @@ while($crash[$i]){
 close (FILE);
 
 $filename = "logs/crashes/report_summary.txt";
-if (-e $filename) { 
+if (-e $filename) {
 	if($OS eq "Windows"){
 		system("notepad.exe $filename");
 	}

@@ -1591,7 +1591,7 @@ uint16 Bot::GetPrimarySkillValue() {
 }
 
 uint16 Bot::MaxSkill(EQ::skills::SkillType skillid, uint16 class_, uint16 level) const {
-	return(database.GetSkillCap(class_, skillid, level));
+	return(content_db.GetSkillCap(class_, skillid, level));
 }
 
 uint32 Bot::GetTotalATK() {
@@ -1701,206 +1701,15 @@ bool Bot::IsValidRaceClassCombo()
 	return Bot::IsValidRaceClassCombo(GetRace(), GetClass());
 }
 
-bool Bot::IsValidRaceClassCombo(uint16 r, uint8 c)
+bool Bot::IsValidRaceClassCombo(uint16 bot_race, uint8 bot_class)
 {
-	switch (r) {
-	case HUMAN:
-		switch (c) {
-		case WARRIOR:
-		case CLERIC:
-		case PALADIN:
-		case RANGER:
-		case SHADOWKNIGHT:
-		case DRUID:
-		case MONK:
-		case BARD:
-		case ROGUE:
-		case NECROMANCER:
-		case WIZARD:
-		case MAGICIAN:
-		case ENCHANTER:
-			return true;
-		}
-		break;
-	case BARBARIAN:
-		switch (c) {
-		case WARRIOR:
-		case ROGUE:
-		case SHAMAN:
-		case BEASTLORD:
-		case BERSERKER:
-			return true;
-		}
-		break;
-	case ERUDITE:
-		switch (c) {
-		case CLERIC:
-		case PALADIN:
-		case SHADOWKNIGHT:
-		case NECROMANCER:
-		case WIZARD:
-		case MAGICIAN:
-		case ENCHANTER:
-			return true;
-		}
-		break;
-	case WOOD_ELF:
-		switch (c) {
-		case WARRIOR:
-		case RANGER:
-		case DRUID:
-		case BARD:
-		case ROGUE:
-			return true;
-		}
-		break;
-	case HIGH_ELF:
-		switch (c) {
-		case CLERIC:
-		case PALADIN:
-		case WIZARD:
-		case MAGICIAN:
-		case ENCHANTER:
-			return true;
-		}
-		break;
-	case DARK_ELF:
-		switch (c) {
-		case WARRIOR:
-		case CLERIC:
-		case SHADOWKNIGHT:
-		case ROGUE:
-		case NECROMANCER:
-		case WIZARD:
-		case MAGICIAN:
-		case ENCHANTER:
-			return true;
-		}
-		break;
-	case HALF_ELF:
-		switch (c) {
-		case WARRIOR:
-		case PALADIN:
-		case RANGER:
-		case DRUID:
-		case BARD:
-		case ROGUE:
-			return true;
-		}
-		break;
-	case DWARF:
-		switch (c) {
-		case WARRIOR:
-		case CLERIC:
-		case PALADIN:
-		case ROGUE:
-		case BERSERKER:
-			return true;
-		}
-		break;
-	case TROLL:
-		switch (c) {
-		case WARRIOR:
-		case SHADOWKNIGHT:
-		case SHAMAN:
-		case BEASTLORD:
-		case BERSERKER:
-			return true;
-		}
-		break;
-	case OGRE:
-		switch (c) {
-		case WARRIOR:
-		case SHADOWKNIGHT:
-		case SHAMAN:
-		case BEASTLORD:
-		case BERSERKER:
-			return true;
-		}
-		break;
-	case HALFLING:
-		switch (c) {
-		case WARRIOR:
-		case CLERIC:
-		case PALADIN:
-		case RANGER:
-		case DRUID:
-		case ROGUE:
-			return true;
-		}
-		break;
-	case GNOME:
-		switch (c) {
-		case WARRIOR:
-		case CLERIC:
-		case PALADIN:
-		case SHADOWKNIGHT:
-		case ROGUE:
-		case NECROMANCER:
-		case WIZARD:
-		case MAGICIAN:
-		case ENCHANTER:
-			return true;
-		}
-		break;
-	case IKSAR:
-		switch (c) {
-		case WARRIOR:
-		case SHADOWKNIGHT:
-		case MONK:
-		case SHAMAN:
-		case NECROMANCER:
-		case BEASTLORD:
-			return true;
-		}
-		break;
-	case VAHSHIR:
-		switch (c) {
-		case WARRIOR:
-		case BARD:
-		case ROGUE:
-		case SHAMAN:
-		case BEASTLORD:
-		case BERSERKER:
-			return true;
-		}
-		break;
-	case FROGLOK:
-		switch (c) {
-		case WARRIOR:
-		case CLERIC:
-		case PALADIN:
-		case SHADOWKNIGHT:
-		case ROGUE:
-		case SHAMAN:
-		case NECROMANCER:
-		case WIZARD:
-			return true;
-		}
-		break;
-	case DRAKKIN:
-		switch (c) {
-		case WARRIOR:
-		case CLERIC:
-		case PALADIN:
-		case RANGER:
-		case SHADOWKNIGHT:
-		case DRUID:
-		case MONK:
-		case BARD:
-		case ROGUE:
-		case NECROMANCER:
-		case WIZARD:
-		case MAGICIAN:
-		case ENCHANTER:
-			return true;
-		}
-		break;
-	default:
-		break;
+	bool is_valid = false;
+	auto classes = database.botdb.GetRaceClassBitmask(bot_race);
+	auto bot_class_bitmask = GetPlayerClassBit(bot_class);
+	if (classes & bot_class_bitmask) {
+		is_valid = true;
 	}
-
-	return false;
+	return is_valid;
 }
 
 bool Bot::IsValidName()
@@ -2211,12 +2020,12 @@ bool Bot::Process()
 		return false;
 	}
 
-	if (mob_scan_close.Check()) {
+	if (mob_close_scan_timer.Check()) {
 		LogAIScanClose(
 			"is_moving [{}] bot [{}] timer [{}]",
 			moving ? "true" : "false",
 			GetCleanName(),
-			mob_scan_close.GetDuration()
+			mob_close_scan_timer.GetDuration()
 		);
 
 		entity_list.ScanCloseClientMobs(close_mobs, this);
@@ -4262,124 +4071,6 @@ void Bot::LevelBotWithClient(Client* client, uint8 level, bool sendlvlapp) {
 
 		blist.clear();
 	}
-}
-
-std::string Bot::ClassIdToString(uint16 classId) {
-	std::string Result;
-
-	if(classId > 0 && classId < 17) {
-		switch(classId) {
-			case 1:
-				Result = std::string("Warrior");
-				break;
-			case 2:
-				Result = std::string("Cleric");
-				break;
-			case 3:
-				Result = std::string("Paladin");
-				break;
-			case 4:
-				Result = std::string("Ranger");
-				break;
-			case 5:
-				Result = std::string("Shadowknight");
-				break;
-			case 6:
-				Result = std::string("Druid");
-				break;
-			case 7:
-				Result = std::string("Monk");
-				break;
-			case 8:
-				Result = std::string("Bard");
-				break;
-			case 9:
-				Result = std::string("Rogue");
-				break;
-			case 10:
-				Result = std::string("Shaman");
-				break;
-			case 11:
-				Result = std::string("Necromancer");
-				break;
-			case 12:
-				Result = std::string("Wizard");
-				break;
-			case 13:
-				Result = std::string("Magician");
-				break;
-			case 14:
-				Result = std::string("Enchanter");
-				break;
-			case 15:
-				Result = std::string("Beastlord");
-				break;
-			case 16:
-				Result = std::string("Berserker");
-				break;
-		}
-	}
-
-	return Result;
-}
-
-std::string Bot::RaceIdToString(uint16 raceId) {
-	std::string Result;
-
-	if(raceId > 0) {
-		switch(raceId) {
-			case 1:
-				Result = std::string("Human");
-				break;
-			case 2:
-				Result = std::string("Barbarian");
-				break;
-			case 3:
-				Result = std::string("Erudite");
-				break;
-			case 4:
-				Result = std::string("Wood Elf");
-				break;
-			case 5:
-				Result = std::string("High Elf");
-				break;
-			case 6:
-				Result = std::string("Dark Elf");
-				break;
-			case 7:
-				Result = std::string("Half Elf");
-				break;
-			case 8:
-				Result = std::string("Dwarf");
-				break;
-			case 9:
-				Result = std::string("Troll");
-				break;
-			case 10:
-				Result = std::string("Ogre");
-				break;
-			case 11:
-				Result = std::string("Halfling");
-				break;
-			case 12:
-				Result = std::string("Gnome");
-				break;
-			case 128:
-				Result = std::string("Iksar");
-				break;
-			case 130:
-				Result = std::string("Vah Shir");
-				break;
-			case 330:
-				Result = std::string("Froglok");
-				break;
-			case 522:
-				Result = std::string("Drakkin");
-				break;
-		}
-	}
-
-	return Result;
 }
 
 void Bot::SendBotArcheryWearChange(uint8 material_slot, uint32 material, uint32 color) {
@@ -7101,12 +6792,15 @@ int32 Bot::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target) {
 }
 
 int32 Bot::GetActSpellCasttime(uint16 spell_id, int32 casttime) {
-	int32 cast_reducer = 0;
-	cast_reducer += GetBotFocusEffect(focusSpellHaste, spell_id);
+	int32 cast_reducer = GetBotFocusEffect(focusSpellHaste, spell_id);
+	auto min_cap = casttime / 2;
 	uint8 botlevel = GetLevel();
 	uint8 botclass = GetClass();
-	if (botlevel >= 51 && casttime >= 3000 && !BeneficialSpell(spell_id) && (botclass == SHADOWKNIGHT || botclass == RANGER || botclass == PALADIN || botclass == BEASTLORD ))
-		cast_reducer += ((GetLevel() - 50) * 3);
+	if (botlevel >= 51 && casttime >= 3000 && !spells[spell_id].goodEffect &&
+	    (botclass == SHADOWKNIGHT || botclass == RANGER || botclass == PALADIN || botclass == BEASTLORD)) {
+		int level_mod = std::min(15, botlevel - 50);
+		cast_reducer += level_mod * 3;
+	}
 
 	if((casttime >= 4000) && BeneficialSpell(spell_id) && IsBuffSpell(spell_id)) {
 		switch (GetAA(aaSpellCastingDeftness)) {
@@ -7176,11 +6870,8 @@ int32 Bot::GetActSpellCasttime(uint16 spell_id, int32 casttime) {
 		}
 	}
 
-	if (cast_reducer > RuleI(Spells, MaxCastTimeReduction))
-		cast_reducer = RuleI(Spells, MaxCastTimeReduction);
-
-	casttime = (casttime * (100 - cast_reducer) / 100);
-	return casttime;
+	casttime = casttime * (100 - cast_reducer) / 100;
+	return std::max(casttime, min_cap);
 }
 
 int32 Bot::GetActSpellCost(uint16 spell_id, int32 cost) {
@@ -8605,6 +8296,8 @@ void Bot::ProcessBotGroupInvite(Client* c, std::string botName) {
 					g->SaveGroupLeaderAA();
 					database.SetGroupID(c->GetName(), g->GetID(), c->CharacterID());
 					database.SetGroupID(invitedBot->GetCleanName(), g->GetID(), invitedBot->GetBotID());
+				} else {
+					delete g;
 				}
 			} else {
 				AddBotToGroup(invitedBot, c->GetGroup());
@@ -9080,7 +8773,7 @@ void Bot::CalcBotStats(bool showtext) {
 		SetLevel(GetBotOwner()->GetLevel());
 
 	for (int sindex = 0; sindex <= EQ::skills::HIGHEST_SKILL; ++sindex) {
-		skills[sindex] = database.GetSkillCap(GetClass(), (EQ::skills::SkillType)sindex, GetLevel());
+		skills[sindex] = content_db.GetSkillCap(GetClass(), (EQ::skills::SkillType)sindex, GetLevel());
 	}
 
 	taunt_timer.Start(1000);

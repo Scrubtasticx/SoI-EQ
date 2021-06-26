@@ -703,11 +703,11 @@ bool Database::SaveCharacterCreate(uint32 character_id, uint32 account_id, Playe
 		"(%u, %u, %u, %f, %f, %f, %f, %i), "
 		"(%u, %u, %u, %f, %f, %f, %f, %i), "
 		"(%u, %u, %u, %f, %f, %f, %f, %i)",
-		character_id, pp->binds[0].zoneId, 0, pp->binds[0].x, pp->binds[0].y, pp->binds[0].z, pp->binds[0].heading, 0,
-		character_id, pp->binds[1].zoneId, 0, pp->binds[1].x, pp->binds[1].y, pp->binds[1].z, pp->binds[1].heading, 1,
-		character_id, pp->binds[2].zoneId, 0, pp->binds[2].x, pp->binds[2].y, pp->binds[2].z, pp->binds[2].heading, 2,
-		character_id, pp->binds[3].zoneId, 0, pp->binds[3].x, pp->binds[3].y, pp->binds[3].z, pp->binds[3].heading, 3,
-		character_id, pp->binds[4].zoneId, 0, pp->binds[4].x, pp->binds[4].y, pp->binds[4].z, pp->binds[4].heading, 4
+		character_id, pp->binds[0].zone_id, 0, pp->binds[0].x, pp->binds[0].y, pp->binds[0].z, pp->binds[0].heading, 0,
+		character_id, pp->binds[1].zone_id, 0, pp->binds[1].x, pp->binds[1].y, pp->binds[1].z, pp->binds[1].heading, 1,
+		character_id, pp->binds[2].zone_id, 0, pp->binds[2].x, pp->binds[2].y, pp->binds[2].z, pp->binds[2].heading, 2,
+		character_id, pp->binds[3].zone_id, 0, pp->binds[3].x, pp->binds[3].y, pp->binds[3].z, pp->binds[3].heading, 3,
+		character_id, pp->binds[4].zone_id, 0, pp->binds[4].x, pp->binds[4].y, pp->binds[4].z, pp->binds[4].heading, 4
 	); results = QueryDatabase(query);
 
         /* HoTT Ability */
@@ -870,36 +870,60 @@ void Database::GetCharName(uint32 char_id, char* name) {
 	}
 }
 
-const char* Database::GetCharNameByID(uint32 char_id) {
+std::string Database::GetCharNameByID(uint32 char_id) {
 	std::string query = fmt::format("SELECT `name` FROM `character_data` WHERE id = {}", char_id);
 	auto results = QueryDatabase(query);
+	std::string res;
 
 	if (!results.Success()) {
-		return "";
+		return res;
 	}
 
 	if (results.RowCount() == 0) {
-		return "";
+		return res;
 	}
 
 	auto row = results.begin();
-	return row[0];
+	res = row[0];
+	return res;
 }
 
-const char* Database::GetNPCNameByID(uint32 npc_id) {
+std::string Database::GetNPCNameByID(uint32 npc_id) {
 	std::string query = fmt::format("SELECT `name` FROM `npc_types` WHERE id = {}", npc_id);
 	auto results = QueryDatabase(query);
+	std::string res;
 
 	if (!results.Success()) {
-		return "";
+		return res;
 	}
 
 	if (results.RowCount() == 0) {
-		return "";
+		return res;
 	}
 
 	auto row = results.begin();
-	return row[0];
+	res = row[0];
+	return res;
+}
+
+std::string Database::GetCleanNPCNameByID(uint32 npc_id) {
+	std::string query = fmt::format("SELECT `name` FROM `npc_types` WHERE id = {}", npc_id);
+	auto results = QueryDatabase(query);
+	std::string res;
+	std::string mob_name;
+
+	if (!results.Success()) {
+		return res;
+	}
+
+	if (results.RowCount() == 0) {
+		return res;
+	}
+
+	auto row = results.begin();
+	mob_name = row[0];
+	CleanMobName(mob_name.begin(), mob_name.end(), std::back_inserter(res));
+	return res;
 }
 
 bool Database::LoadVariables() {
@@ -971,10 +995,24 @@ bool Database::SetVariable(const std::string varname, const std::string &varvalu
 }
 
 // Get zone starting points from DB
-bool Database::GetSafePoints(const char* short_name, uint32 version, float* safe_x, float* safe_y, float* safe_z, int16* minstatus, uint8* minlevel, char *flag_needed) {
+bool Database::GetSafePoints(const char* zone_short_name, uint32 instance_version, float* safe_x, float* safe_y, float* safe_z, float* safe_heading, int16* min_status, uint8* min_level, char *flag_needed) {
 
-	std::string query = StringFormat("SELECT safe_x, safe_y, safe_z, min_status, min_level, flag_needed FROM zone "
-		" WHERE short_name='%s' AND (version=%i OR version=0) ORDER BY version DESC", short_name, version);
+	if (zone_short_name == nullptr)
+		return false;
+
+	std::string query = fmt::format(
+		SQL(
+			SELECT
+			`safe_x`, `safe_y`, `safe_z`, `safe_heading`, `min_status`, `min_level`, `flag_needed`
+			FROM
+			zone
+			WHERE
+			`short_name` = '{}'
+			AND
+			(`version` = {} OR `version` = 0)
+			ORDER BY `version` DESC
+		), zone_short_name, instance_version
+	);
 	auto results = QueryDatabase(query);
 
 	if (!results.Success())
@@ -987,16 +1025,24 @@ bool Database::GetSafePoints(const char* short_name, uint32 version, float* safe
 
 	if (safe_x != nullptr)
 		*safe_x = atof(row[0]);
+
 	if (safe_y != nullptr)
 		*safe_y = atof(row[1]);
+
 	if (safe_z != nullptr)
 		*safe_z = atof(row[2]);
-	if (minstatus != nullptr)
-		*minstatus = atoi(row[3]);
-	if (minlevel != nullptr)
-		*minlevel = atoi(row[4]);
+
+	if (safe_heading != nullptr)
+		*safe_heading = atof(row[3]);
+
+	if (min_status != nullptr)
+		*min_status = atoi(row[4]);
+
+	if (min_level != nullptr)
+		*min_level = atoi(row[5]);
+
 	if (flag_needed != nullptr)
-		strcpy(flag_needed, row[5]);
+		strcpy(flag_needed, row[6]);
 
 	return true;
 }
@@ -1346,6 +1392,20 @@ bool Database::SetHackerFlag(const char* accountname, const char* charactername,
 bool Database::SetMQDetectionFlag(const char* accountname, const char* charactername, const char* hacked, const char* zone) {
 	//Utilize the "hacker" table, but also give zone information.
 	std::string query = StringFormat("INSERT INTO hackers(account,name,hacked,zone) values('%s','%s','%s','%s')", accountname, charactername, hacked, zone);
+	auto results = QueryDatabase(query);
+
+	if (!results.Success())
+	{
+		return false;
+	}
+
+	return results.RowsAffected() != 0;
+}
+
+bool Database::SetMQDetectionFlag(const char* accountname, const char* charactername, const std::string &hacked, const char* zone) {
+	//Utilize the "hacker" table, but also give zone information.
+	auto query = fmt::format("INSERT INTO hackers(account, name, hacked, zone) values('{}', '{}', '{}', '{}')",
+				 accountname, charactername, hacked, zone);
 	auto results = QueryDatabase(query);
 
 	if (!results.Success())
@@ -2129,95 +2189,6 @@ uint32 Database::GetRaidIDByCharID(uint32 character_id) {
 		return atoi(row[0]);
 	}
 	return 0;
-}
-
-/**
- * @param log_settings
- */
-void Database::LoadLogSettings(EQEmuLogSys::LogSettings *log_settings)
-{
-	std::string query =
-					"SELECT "
-					"log_category_id, "
-					"log_category_description, "
-					"log_to_console, "
-					"log_to_file, "
-					"log_to_gmsay "
-					"FROM "
-					"logsys_categories "
-					"ORDER BY log_category_id";
-
-	auto results         = QueryDatabase(query);
-	int  log_category_id = 0;
-
-	int *categories_in_database = new int[1000];
-
-	for (auto row = results.begin(); row != results.end(); ++row) {
-		log_category_id = atoi(row[0]);
-		if (log_category_id <= Logs::None || log_category_id >= Logs::MaxCategoryID) {
-			continue;
-		}
-
-		log_settings[log_category_id].log_to_console = static_cast<uint8>(atoi(row[2]));
-		log_settings[log_category_id].log_to_file    = static_cast<uint8>(atoi(row[3]));
-		log_settings[log_category_id].log_to_gmsay   = static_cast<uint8>(atoi(row[4]));
-
-		/**
-		 * Determine if any output method is enabled for the category
-		 * and set it to 1 so it can used to check if category is enabled
-		 */
-		const bool log_to_console      = log_settings[log_category_id].log_to_console > 0;
-		const bool log_to_file         = log_settings[log_category_id].log_to_file > 0;
-		const bool log_to_gmsay        = log_settings[log_category_id].log_to_gmsay > 0;
-		const bool is_category_enabled = log_to_console || log_to_file || log_to_gmsay;
-
-		if (is_category_enabled) {
-			log_settings[log_category_id].is_category_enabled = 1;
-		}
-
-		/**
-		 * This determines whether or not the process needs to actually file log anything.
-		 * If we go through this whole loop and nothing is set to any debug level, there is no point to create a file or keep anything open
-		 */
-		if (log_settings[log_category_id].log_to_file > 0) {
-			LogSys.file_logs_enabled = true;
-		}
-
-		categories_in_database[log_category_id] = 1;
-	}
-
-	/**
-	 * Auto inject categories that don't exist in the database...
-	 */
-	for (int log_index = Logs::AA; log_index != Logs::MaxCategoryID; log_index++) {
-		if (categories_in_database[log_index] != 1) {
-
-			LogInfo(
-				"New Log Category [{0}] doesn't exist... Automatically adding to [logsys_categories] table...",
-				Logs::LogCategoryName[log_index]
-			);
-
-			auto inject_query = fmt::format(
-				"INSERT INTO logsys_categories "
-				"(log_category_id, "
-				"log_category_description, "
-				"log_to_console, "
-				"log_to_file, "
-				"log_to_gmsay) "
-				"VALUES "
-				"({0}, '{1}', {2}, {3}, {4})",
-				log_index,
-				EscapeString(Logs::LogCategoryName[log_index]),
-				std::to_string(log_settings[log_index].log_to_console),
-				std::to_string(log_settings[log_index].log_to_file),
-				std::to_string(log_settings[log_index].log_to_gmsay)
-			);
-
-			QueryDatabase(inject_query);
-		}
-	}
-
-	delete[] categories_in_database;
 }
 
 int Database::CountInvSnapshots() {

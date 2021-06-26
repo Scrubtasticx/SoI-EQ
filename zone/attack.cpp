@@ -87,7 +87,7 @@ EQ::skills::SkillType Mob::AttackAnimation(int Hand, const EQ::ItemInstance* wea
 			break;
 		case EQ::item::ItemType2HBlunt: // 2H Blunt
 			skillinuse = EQ::skills::Skill2HBlunt;
-			type = anim2HSlashing; //anim2HWeapon
+			type = RuleB(Combat, Classic2HBAnimation) ? anim2HWeapon : anim2HSlashing; 
 			break;
 		case EQ::item::ItemType2HPiercing: // 2H Piercing
 			if (IsClient() && CastToClient()->ClientVersion() < EQ::versions::ClientVersion::RoF2)
@@ -1522,6 +1522,25 @@ bool Client::Attack(Mob* other, int Hand, bool bRiposte, bool IsStrikethrough, b
 
 	other->AddToHateList(this, hate);
 
+	//Guard Assist Code
+	if (RuleB(Character, PVPEnableGuardFactionAssist)) {
+		if (IsClient() || (HasOwner() && GetOwner()->IsClient())) {
+			auto& mob_list = entity_list.GetCloseMobList(other);
+			for (auto& e : mob_list) {
+				auto mob = e.second;
+				if (mob->IsNPC() && mob->CastToNPC()->IsGuard()) {
+					float distance = Distance(other->CastToClient()->m_Position, mob->GetPosition());
+					if ((mob->CheckLosFN(other) || mob->CheckLosFN(this)) && distance <= 70) {
+						auto petorowner = GetOwnerOrSelf();
+						if (other->GetReverseFactionCon(mob) <= petorowner->GetReverseFactionCon(mob)) {
+							mob->AddToHateList(this);
+						}
+					}
+				}
+			}
+		}
+	}
+
 	///////////////////////////////////////////////////////////
 	////// Send Attack Damage
 	///////////////////////////////////////////////////////////
@@ -1655,7 +1674,7 @@ bool Client::Death(Mob* killerMob, int32 damage, uint16 spell, EQ::skills::Skill
 	d->spawn_id = GetID();
 	d->killer_id = killerMob ? killerMob->GetID() : 0;
 	d->corpseid = GetID();
-	d->bindzoneid = m_pp.binds[0].zoneId;
+	d->bindzoneid = m_pp.binds[0].zone_id;
 	d->spell_id = spell == SPELL_UNKNOWN ? 0xffffffff : spell;
 	d->attack_skill = spell != SPELL_UNKNOWN ? 0xe7 : attack_skill;
 	d->damage = damage;
@@ -1892,7 +1911,7 @@ bool Client::Death(Mob* killerMob, int32 damage, uint16 spell, EQ::skills::Skill
 			r->MemberZoned(this);
 
 		dead_timer.Start(5000, true);
-		m_pp.zone_id = m_pp.binds[0].zoneId;
+		m_pp.zone_id = m_pp.binds[0].zone_id;
 		m_pp.zoneInstance = m_pp.binds[0].instance_id;
 		database.MoveCharacterToZone(this->CharacterID(), m_pp.zone_id);
 		Save();
@@ -1999,6 +2018,24 @@ bool NPC::Attack(Mob* other, int Hand, bool bRiposte, bool IsStrikethrough, bool
 		default:
 			my_hit.skill = EQ::skills::SkillHandtoHand;
 			break;
+		}
+	}
+
+	//Guard Assist Code
+	if (RuleB(Character, PVPEnableGuardFactionAssist)) {
+		if (IsClient() || (HasOwner() && GetOwner()->IsClient())) {
+			auto& mob_list = entity_list.GetCloseMobList(other);
+			for (auto& e : mob_list) {
+				auto mob = e.second;
+				if (mob->IsNPC() && mob->CastToNPC()->IsGuard()) {
+					float distance = Distance(other->GetPosition(), mob->GetPosition());
+					if ((mob->CheckLosFN(other) || mob->CheckLosFN(this)) && distance <= 70) {
+						if (other->GetReverseFactionCon(mob) <= GetOwner()->GetReverseFactionCon(mob)) {
+							mob->AddToHateList(this);
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -2247,7 +2284,7 @@ bool NPC::Death(Mob* killer_mob, int32 damage, uint16 spell, EQ::skills::SkillTy
 	d->spawn_id = GetID();
 	d->killer_id = killer_mob ? killer_mob->GetID() : 0;
 	d->bindzoneid = 0;
-	d->spell_id = spell == SPELL_UNKNOWN ? 0xffffffff : spell;
+	d->spell_id = 0xffffffff; // Sending spell was causing extra DoT land msg
 	d->attack_skill = SkillDamageTypes[attack_skill];
 	d->damage = damage;
 	app->priority = 6;
@@ -2667,6 +2704,12 @@ void Mob::AddToHateList(Mob* other, uint32 hate /*= 0*/, int32 damage /*= 0*/, b
 	if (IsFamiliar() || GetSpecialAbility(IMMUNE_AGGRO))
 		return;
 
+	if (GetSpecialAbility(IMMUNE_AGGRO_NPC) && other->IsNPC())
+		return;
+
+	if (GetSpecialAbility(IMMUNE_AGGRO_CLIENT) && other->IsClient())
+		return;
+
 	if (spell_id != SPELL_UNKNOWN && NoDetrimentalSpellAggro(spell_id))
 		return;
 
@@ -2758,8 +2801,11 @@ void Mob::AddToHateList(Mob* other, uint32 hate /*= 0*/, int32 damage /*= 0*/, b
 		else {
 			// cb:2007-08-17
 			// owner must get on list, but he's not actually gained any hate yet
-			if (!owner->GetSpecialAbility(IMMUNE_AGGRO))
-			{
+			if (
+				!owner->GetSpecialAbility(IMMUNE_AGGRO) &&
+				!(this->GetSpecialAbility(IMMUNE_AGGRO_CLIENT) && owner->IsClient()) && 
+				!(this->GetSpecialAbility(IMMUNE_AGGRO_NPC) && owner->IsNPC())
+			) {
 				if (owner->IsClient() && !CheckAggro(owner))
 					owner->CastToClient()->AddAutoXTarget(this);
 				hate_list.AddEntToHateList(owner, 0, 0, false, !iBuffTic);
@@ -2768,12 +2814,24 @@ void Mob::AddToHateList(Mob* other, uint32 hate /*= 0*/, int32 damage /*= 0*/, b
 	}
 
 	if (mypet && !mypet->IsHeld() && !mypet->IsPetStop()) { // I have a pet, add other to it
-		if (!mypet->IsFamiliar() && !mypet->GetSpecialAbility(IMMUNE_AGGRO))
+		if (
+			!mypet->IsFamiliar() && 
+			!mypet->GetSpecialAbility(IMMUNE_AGGRO) &&
+			!(mypet->GetSpecialAbility(IMMUNE_AGGRO_CLIENT) && this->IsClient()) && 
+			!(mypet->GetSpecialAbility(IMMUNE_AGGRO_NPC) && this->IsNPC())
+		) {
 			mypet->hate_list.AddEntToHateList(other, 0, 0, bFrenzy);
+		}
 	}
 	else if (myowner) { // I am a pet, add other to owner if it's NPC/LD
-		if (myowner->IsAIControlled() && !myowner->GetSpecialAbility(IMMUNE_AGGRO))
+		if (
+			myowner->IsAIControlled() && 
+			!myowner->GetSpecialAbility(IMMUNE_AGGRO) &&
+			!(this->GetSpecialAbility(IMMUNE_AGGRO_CLIENT) && myowner->IsClient()) && 
+			!(this->GetSpecialAbility(IMMUNE_AGGRO_NPC) && myowner->IsNPC())
+		) {
 			myowner->hate_list.AddEntToHateList(other, 0, 0, bFrenzy);
+		}
 	}
 
 	if (other->GetTempPetCount())
@@ -2993,9 +3051,10 @@ int Mob::GetHandToHandDelay(void)
 			epic = 280;
 		else if (GetRace() == IKSAR)
 			iksar = 1;
-		if (epic > skill)
-			skill = epic;
-		return iksar - skill / 21 + 38;
+		// the delay bonus from the monk epic scales up to a skill of 280
+		if (epic >= skill)
+			epic = skill;
+		return iksar - epic / 21 + 38;
 	}
 
 	int delay = 35;
@@ -3385,7 +3444,7 @@ void Mob::CommonDamage(Mob* attacker, int &damage, const uint16 spell_id, const 
 	bool FromDamageShield = (skill_used == EQ::skills::SkillAbjuration);
 	bool ignore_invul = false;
 	if (IsValidSpell(spell_id))
-		ignore_invul = spell_id == 982 || spells[spell_id].cast_not_standing; // cazic touch
+		ignore_invul = spell_id == SPELL_CAZIC_TOUCH || spells[spell_id].cast_not_standing;
 
 	if (!ignore_invul && (GetInvul() || DivineAura())) {
 		LogCombat("Avoiding [{}] damage due to invulnerability", damage);
@@ -3445,16 +3504,55 @@ void Mob::CommonDamage(Mob* attacker, int &damage, const uint16 spell_id, const 
 				// emote goes with every one ... even npcs
 				entity_list.MessageClose(this, true, RuleI(Range, SpellMessages), Chat::Emote, "%s beams a smile at %s", attacker->GetCleanName(), this->GetCleanName());
 			}
+		
+			// If a client pet is damaged while sitting, stand, fix sit button,
+			// and remove sitting regen.  Removes bug where client clicks sit
+			// during battle and gains pet hp-regen and bugs the sit button.
+			if (IsPet()) {
+				Mob *owner = this->GetOwner();
+				if (owner && owner->IsClient()) {
+					if (GetPetOrder() == SPO_Sit) {
+						SetPetOrder(SPO_Follow);
+					}
+					// fix GUI sit button to be unpressed and stop sitting regen
+					owner->CastToClient()->SetPetCommandState(PET_BUTTON_SIT, 0);
+					SetAppearance(eaStanding);
+				}	
+			}
+
 		}	//end `if there is some damage being done and theres anattacker person involved`
 
 		Mob *pet = GetPet();
 		// pets that have GHold will never automatically add NPCs
 		// pets that have Hold and no Focus will add NPCs if they're engaged
 		// pets that have Hold and Focus will not add NPCs
-		if (pet && !pet->IsFamiliar() && !pet->GetSpecialAbility(IMMUNE_AGGRO) && !pet->IsEngaged() && attacker && attacker != this && !attacker->IsCorpse() && !pet->IsGHeld() && !attacker->IsTrap())
-		{
+		if (
+			pet && 
+			!pet->IsFamiliar() && 
+			!pet->GetSpecialAbility(IMMUNE_AGGRO) && 
+			!pet->IsEngaged() && 
+			attacker && 
+			!(pet->GetSpecialAbility(IMMUNE_AGGRO_CLIENT) && attacker->IsClient()) && 
+			!(pet->GetSpecialAbility(IMMUNE_AGGRO_NPC) && attacker->IsNPC()) && 
+			attacker != this && 
+			!attacker->IsCorpse() && 
+			!pet->IsGHeld() && 
+			!attacker->IsTrap()
+		) {
 			if (!pet->IsHeld()) {
 				LogAggro("Sending pet [{}] into battle due to attack", pet->GetName());
+				if (IsClient()) {
+					// if pet was sitting his new mode is follow
+					// following after the battle (live verified)
+					if (pet->GetPetOrder() == SPO_Sit) {
+						pet->SetPetOrder(SPO_Follow);
+					}
+
+					// fix GUI sit button to be unpressed and stop sitting regen
+					this->CastToClient()->SetPetCommandState(PET_BUTTON_SIT, 0);
+					pet->SetAppearance(eaStanding);
+				}
+
 				pet->AddToHateList(attacker, 1, 0, true, false, false, spell_id);
 				pet->SetTarget(attacker);
 				MessageString(Chat::NPCQuestSay, PET_ATTACKING, pet->GetCleanName(), attacker->GetCleanName());

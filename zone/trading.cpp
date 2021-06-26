@@ -1266,7 +1266,7 @@ uint32 Client::FindTraderItemSerialNumber(int32 ItemID) {
 	uint16 SlotID = 0;
 	for (int i = EQ::invslot::GENERAL_BEGIN; i <= EQ::invslot::GENERAL_END; i++){
 		item = this->GetInv().GetItem(i);
-		if (item && item->GetItem()->ID == 17899){ //Traders Satchel
+		if (item && item->GetItem()->BagType == EQ::item::BagTypeTradersSatchel){
 			for (int x = EQ::invbag::SLOT_BEGIN; x <= EQ::invbag::SLOT_END; x++) {
 				// we already have the parent bag and a contents iterator..why not just iterate the bag!??
 				SlotID = EQ::InventoryProfile::CalcSlotId(i, x);
@@ -1289,7 +1289,7 @@ EQ::ItemInstance* Client::FindTraderItemBySerialNumber(int32 SerialNumber){
 	uint16 SlotID = 0;
 	for (int i = EQ::invslot::GENERAL_BEGIN; i <= EQ::invslot::GENERAL_END; i++){
 		item = this->GetInv().GetItem(i);
-		if(item && item->GetItem()->ID == 17899){ //Traders Satchel
+		if (item && item->GetItem()->BagType == EQ::item::BagTypeTradersSatchel){
 			for (int x = EQ::invbag::SLOT_BEGIN; x <= EQ::invbag::SLOT_END; x++) {
 				// we already have the parent bag and a contents iterator..why not just iterate the bag!??
 				SlotID = EQ::InventoryProfile::CalcSlotId(i, x);
@@ -1322,7 +1322,7 @@ GetItems_Struct* Client::GetTraderItems(){
 		if (ndx >= 80)
 			break;
 		item = this->GetInv().GetItem(i);
-		if(item && item->GetItem()->ID == 17899){ //Traders Satchel
+		if (item && item->GetItem()->BagType == EQ::item::BagTypeTradersSatchel){
 			for (int x = EQ::invbag::SLOT_BEGIN; x <= EQ::invbag::SLOT_END; x++) {
 				if (ndx >= 80)
 					break;
@@ -1349,7 +1349,7 @@ uint16 Client::FindTraderItem(int32 SerialNumber, uint16 Quantity){
 	uint16 SlotID = 0;
 	for (int i = EQ::invslot::GENERAL_BEGIN; i <= EQ::invslot::GENERAL_END; i++) {
 		item = this->GetInv().GetItem(i);
-		if(item && item->GetItem()->ID == 17899){ //Traders Satchel
+		if (item && item->GetItem()->BagType == EQ::item::BagTypeTradersSatchel){
 			for (int x = EQ::invbag::SLOT_BEGIN; x <= EQ::invbag::SLOT_END; x++){
 				SlotID = EQ::InventoryProfile::CalcSlotId(i, x);
 
@@ -2648,6 +2648,11 @@ void Client::SellToBuyer(const EQApplicationPacket *app) {
 		return;
 	}
 
+	if(item->IsClassBag()) {
+		Message(Chat::Red, "That item is a Bag.");
+		return;
+	}
+
 	if(!item->Stackable) {
 
 		for(uint32 i = 0; i < Quantity; i++) {
@@ -3001,29 +3006,27 @@ void Client::UpdateBuyLine(const EQApplicationPacket *app) {
 	LogTrading("UpdateBuyLine: Char: [{}] BuySlot: [{}] ItemID [{}] [{}] Quantity [{}] Toggle: [{}] Price [{}] ItemCount [{}] LoreConflict [{}]",
 					GetName(), BuySlot, ItemID, item->Name, Quantity, ToggleOnOff, Price, ItemCount, LoreConflict);
 
-	if((item->NoDrop != 0) && !LoreConflict && (Quantity > 0) && HasMoney(Quantity * Price) && ToggleOnOff && (ItemCount == 0)) {
+	if((item->NoDrop != 0) && (!item->IsClassBag())&& !LoreConflict && (Quantity > 0) && HasMoney(Quantity * Price) && ToggleOnOff && (ItemCount == 0)) {
 		LogTrading("Adding to database");
 		database.AddBuyLine(CharacterID(), BuySlot, ItemID, ItemName, Quantity, Price);
 		QueuePacket(app);
 	}
 	else {
-		if(ItemCount > 0)
+		if(ItemCount > 0) {
 			Message(Chat::Red, "Buy line %s disabled as Item Compensation is not currently supported.", ItemName);
-
-		else if(Quantity <= 0)
+		} else if(Quantity <= 0) {
 			Message(Chat::Red, "Buy line %s disabled as the quantity is invalid.", ItemName);
-
-		else if(LoreConflict)
+		} else if(LoreConflict) {
 			Message(Chat::Red, "Buy line %s disabled as the item is LORE and you have one already.", ItemName);
-
-		else if(item->NoDrop == 0)
+		} else if(item->NoDrop == 0) {
 			Message(Chat::Red, "Buy line %s disabled as the item is NODROP.", ItemName);
-
-		else if(ToggleOnOff)
+		} else if(item->IsClassBag()) {
+			Message(Chat::Red, "Buy line %s disabled as the item is a Bag.", ItemName);
+		} else if(ToggleOnOff) {
 			Message(Chat::Red, "Buy line %s disabled due to insufficient funds.", ItemName);
-
-		else
+		} else {
 			database.RemoveBuyLine(CharacterID(), BuySlot);
+		}
 
 		auto outapp = new EQApplicationPacket(OP_Barter, 936);
 

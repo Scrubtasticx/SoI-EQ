@@ -19,6 +19,7 @@
 #include "lua_parser.h"
 #include "lua_bit.h"
 #include "lua_entity.h"
+#include "lua_expedition.h"
 #include "lua_item.h"
 #include "lua_iteminst.h"
 #include "lua_mob.h"
@@ -38,6 +39,10 @@
 #include "lua_general.h"
 #include "lua_encounter.h"
 #include "lua_stat_bonuses.h"
+
+#ifdef BOTS
+#include "lua_bot.h"
+#endif
 
 const char *LuaEvents[_LargestEventID] = {
 	"event_say",
@@ -125,7 +130,8 @@ const char *LuaEvents[_LargestEventID] = {
 	"event_death_zone",
 	"event_use_skill",
 	"event_combine_validate",
-	"event_bot_command"
+	"event_bot_command",
+	"event_test_buff"
 };
 
 extern Zone *zone;
@@ -208,6 +214,7 @@ LuaParser::LuaParser() {
 	PlayerArgumentDispatch[EVENT_RESPAWN] = handle_player_respawn;
 	PlayerArgumentDispatch[EVENT_UNHANDLED_OPCODE] = handle_player_packet;
 	PlayerArgumentDispatch[EVENT_USE_SKILL] = handle_player_use_skill;
+	PlayerArgumentDispatch[EVENT_TEST_BUFF] = handle_test_buff;
 	PlayerArgumentDispatch[EVENT_COMBINE_VALIDATE] = handle_player_combine_validate;
 	PlayerArgumentDispatch[EVENT_BOT_COMMAND] = handle_player_bot_command;
 
@@ -987,6 +994,16 @@ void LuaParser::ReloadQuests() {
 	}
 }
 
+/*
+ * This function is intended only to clean up lua_encounters when the Encounter object is
+ * about to be destroyed. It won't clean up memory else where, since the caller of this
+ * function is responsible for that
+ */
+void LuaParser::RemoveEncounter(const std::string &name)
+{
+	lua_encounters.erase(name);
+}
+
 void LuaParser::LoadScript(std::string filename, std::string package_name) {
 	auto iter = loaded_.find(package_name);
 	if(iter != loaded_.end()) {
@@ -1079,6 +1096,9 @@ void LuaParser::MapFunctions(lua_State *L) {
 			lua_register_special_abilities(),
 			lua_register_npc(),
 			lua_register_client(),
+#ifdef BOTS
+			lua_register_bot(),
+#endif
 			lua_register_inventory(),
 			lua_register_inventory_where(),
 			lua_register_iteminst(),
@@ -1090,6 +1110,9 @@ void LuaParser::MapFunctions(lua_State *L) {
 			lua_register_entity_list(),
 			lua_register_mob_list(),
 			lua_register_client_list(),
+#ifdef BOTS
+			lua_register_bot_list(),
+#endif
 			lua_register_npc_list(),
 			lua_register_corpse_list(),
 			lua_register_object_list(),
@@ -1108,7 +1131,9 @@ void LuaParser::MapFunctions(lua_State *L) {
 			lua_register_ruler(),
 			lua_register_ruleb(),
 			lua_register_journal_speakmode(),
-			lua_register_journal_mode()
+			lua_register_journal_mode(),
+			lua_register_expedition(),
+			lua_register_expedition_lock_messages()
 		];
 
 	} catch(std::exception &ex) {

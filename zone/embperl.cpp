@@ -32,11 +32,16 @@ EXTERN_C XS(boot_Corpse);
 EXTERN_C XS(boot_EntityList);
 EXTERN_C XS(boot_Group);
 EXTERN_C XS(boot_Raid);
+EXTERN_C XS(boot_Inventory);
 EXTERN_C XS(boot_QuestItem);
 EXTERN_C XS(boot_HateEntry);
 EXTERN_C XS(boot_Object);
 EXTERN_C XS(boot_Doors);
 EXTERN_C XS(boot_PerlPacket);
+EXTERN_C XS(boot_Expedition);
+#ifdef BOTS
+EXTERN_C XS(boot_Bot);
+#endif
 #endif
 #endif
 
@@ -83,10 +88,17 @@ EXTERN_C void xs_init(pTHX)
 	newXS(strcpy(buf, "PerlPacket::boot_PerlPacket"), boot_PerlPacket, file);
 	newXS(strcpy(buf, "Group::boot_Group"), boot_Group, file);
 	newXS(strcpy(buf, "Raid::boot_Raid"), boot_Raid, file);
+	newXS(strcpy(buf, "Inventory::boot_Inventory"), boot_Inventory, file);
 	newXS(strcpy(buf, "QuestItem::boot_QuestItem"), boot_QuestItem, file);
 	newXS(strcpy(buf, "HateEntry::boot_HateEntry"), boot_HateEntry, file);
 	newXS(strcpy(buf, "Object::boot_Object"), boot_Object, file);
 	newXS(strcpy(buf, "Doors::boot_Doors"), boot_Doors, file);
+	newXS(strcpy(buf, "Expedition::boot_Expedition"), boot_Expedition, file);
+#ifdef BOTS
+	newXS(strcpy(buf, "Bot::boot_Mob"), boot_Mob, file);
+	newXS(strcpy(buf, "Bot::boot_NPC"), boot_NPC, file);
+	newXS(strcpy(buf, "Bot::boot_Bot"), boot_Bot, file);
+#endif
 ;
 #endif
 #endif

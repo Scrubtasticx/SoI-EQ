@@ -438,6 +438,10 @@ static const uint8 SkillDamageTypes[EQ::skills::HIGHEST_SKILL + 1] = // change t
 
 static const uint32 MAX_SPELL_DB_ID_VAL = 65535;
 
+static const uint32 DB_FACTION_GEM_CHOPPERS = 255;
+static const uint32 DB_FACTION_HERETICS = 265;
+static const uint32 DB_FACTION_KING_AKANON = 333;
+
 enum ChatChannelNames : uint16
 {
 	ChatChannel_Guild = 0,
@@ -462,6 +466,25 @@ enum ChatChannelNames : uint16
 namespace ZoneBlockedSpellTypes {
 	const uint8 ZoneWide = 1;
 	const uint8 Region   = 2;
+};
+
+enum class DynamicZoneType
+{
+	None = 0,
+	Expedition,
+	Tutorial,
+	Task,
+	Mission, // Shared Task
+	Quest
+};
+
+enum class DynamicZoneMemberStatus : uint8_t
+{
+	Unknown = 0,
+	Online,
+	Offline,
+	InDynamicZone,
+	LinkDead
 };
 
 #endif /*COMMON_EQ_CONSTANTS_H*/

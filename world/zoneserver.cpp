@@ -36,6 +36,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include "ucs.h"
 #include "queryserv.h"
 #include "world_store.h"
+#include "dynamic_zone.h"
+#include "expedition_message.h"
 
 extern ClientList client_list;
 extern GroupLFPList LFPGroupList;
@@ -69,12 +71,12 @@ ZoneServer::ZoneServer(std::shared_ptr<EQ::Net::ServertalkServerConnection> conn
 
 	tcpc->OnMessage(std::bind(&ZoneServer::HandleMessage, this, std::placeholders::_1, std::placeholders::_2));
 
-	boot_timer_obj.reset(new EQ::Timer(100, true, [this](EQ::Timer *obj) {
+	boot_timer_obj = std::make_unique<EQ::Timer>(100, true, [this](EQ::Timer *obj) {
 		if (zone_boot_timer.Check()) {
 			LSBootUpdate(GetZoneID(), true);
 			zone_boot_timer.Disable();
 		}
-	}));
+	});
 
 	this->console = console;
 }
@@ -810,7 +812,7 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 	}
 	case ServerOP_ReloadLogs: {
 		zoneserver_list.SendPacket(pack);
-		database.LoadLogSettings(LogSys.log_settings);
+		LogSys.LoadLogDatabaseSettings();
 		break;
 	}
 	case ServerOP_ReloadRules: {
@@ -1287,11 +1289,11 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 	case ServerOP_CZTaskDisablePlayer:
 	case ServerOP_CZTaskDisableGroup:
 	case ServerOP_CZTaskDisableRaid:
-	case ServerOP_CZTaskDisableGuild:	
+	case ServerOP_CZTaskDisableGuild:
 	case ServerOP_CZTaskEnablePlayer:
 	case ServerOP_CZTaskEnableGroup:
 	case ServerOP_CZTaskEnableRaid:
-	case ServerOP_CZTaskEnableGuild:	
+	case ServerOP_CZTaskEnableGuild:
 	case ServerOP_CZTaskFailPlayer:
 	case ServerOP_CZTaskFailGroup:
 	case ServerOP_CZTaskFailRaid:
@@ -1300,6 +1302,7 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 	case ServerOP_CZTaskRemoveGroup:
 	case ServerOP_CZTaskRemoveRaid:
 	case ServerOP_CZTaskRemoveGuild:
+	case ServerOP_CZLDoNUpdate:
 	case ServerOP_WWAssignTask:
 	case ServerOP_WWCastSpell:
 	case ServerOP_WWDisableTask:
@@ -1337,7 +1340,7 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 		}
 
 		LogInfo("Loading skill caps");
-		if (!database.LoadSkillCaps(hotfix_name)) {
+		if (!content_db.LoadSkillCaps(hotfix_name)) {
 			LogInfo("Error: Could not load skill cap data. But ignoring");
 		}
 
@@ -1353,6 +1356,46 @@ void ZoneServer::HandleMessage(uint16 opcode, const EQ::Net::Packet &p) {
 			break;
 
 		cle->ProcessTellQueue();
+		break;
+	}
+	case ServerOP_CZClientMessageString:
+	{
+		auto buf = reinterpret_cast<CZClientMessageString_Struct*>(pack->pBuffer);
+		client_list.SendPacket(buf->character_name, pack);
+		break;
+	}
+	case ServerOP_ExpeditionLockout:
+	case ServerOP_ExpeditionLockoutDuration:
+	case ServerOP_ExpeditionLockState:
+	case ServerOP_ExpeditionReplayOnJoin:
+	case ServerOP_ExpeditionExpireWarning:
+	{
+		zoneserver_list.SendPacket(pack);
+		break;
+	}
+	case ServerOP_ExpeditionCreate:
+	case ServerOP_ExpeditionGetMemberStatuses:
+	case ServerOP_ExpeditionMemberChange:
+	case ServerOP_ExpeditionMemberStatus:
+	case ServerOP_ExpeditionMemberSwap:
+	case ServerOP_ExpeditionMembersRemoved:
+	case ServerOP_ExpeditionDzAddPlayer:
+	case ServerOP_ExpeditionDzMakeLeader:
+	case ServerOP_ExpeditionCharacterLockout:
+	case ServerOP_ExpeditionSaveInvite:
+	case ServerOP_ExpeditionRequestInvite:
+	{
+		ExpeditionMessage::HandleZoneMessage(pack);
+		break;
+	}
+	case ServerOP_DzAddRemoveCharacter:
+	case ServerOP_DzRemoveAllCharacters:
+	case ServerOP_DzSetSecondsRemaining:
+	case ServerOP_DzSetCompass:
+	case ServerOP_DzSetSafeReturn:
+	case ServerOP_DzSetZoneIn:
+	{
+		DynamicZone::HandleZoneMessage(pack);
 		break;
 	}
 	default:

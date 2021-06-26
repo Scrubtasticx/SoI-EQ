@@ -1,29 +1,12 @@
 /**
- * EQEmulator: Everquest Server Emulator
- * Copyright (C) 2001-2020 EQEmulator Development Team (https://github.com/EQEmu/Server)
+ * DO NOT MODIFY THIS FILE
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY except by those people which sell it, which
- * are required to give you total support for your newly bought product;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR
- * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
- *
- */
-
-/**
  * This repository was automatically generated and is NOT to be modified directly.
- * Any repository modifications are meant to be made to
- * the repository extending the base. Any modifications to base repositories are to
- * be made by the generator only
+ * Any repository modifications are meant to be made to the repository extending the base.
+ * Any modifications to base repositories are to be made by the generator only
+ *
+ * @generator ./utils/scripts/generators/repository-generator.pl
+ * @docs https://eqemu.gitbook.io/server/in-development/developer-area/repositories
  */
 
 #ifndef EQEMU_BASE_SPAWN2_REPOSITORY_H
@@ -46,6 +29,7 @@ public:
 		int         respawntime;
 		int         variance;
 		int         pathgrid;
+		int         path_when_zone_idle;
 		int         _condition;
 		int         cond_value;
 		int         enabled;
@@ -75,6 +59,7 @@ public:
 			"respawntime",
 			"variance",
 			"pathgrid",
+			"path_when_zone_idle",
 			"_condition",
 			"cond_value",
 			"enabled",
@@ -89,21 +74,6 @@ public:
 	static std::string ColumnsRaw()
 	{
 		return std::string(implode(", ", Columns()));
-	}
-
-	static std::string InsertColumnsRaw()
-	{
-		std::vector<std::string> insert_columns;
-
-		for (auto &column : Columns()) {
-			if (column == PrimaryKey()) {
-				continue;
-			}
-
-			insert_columns.push_back(column);
-		}
-
-		return std::string(implode(", ", insert_columns));
 	}
 
 	static std::string TableName()
@@ -125,7 +95,7 @@ public:
 		return fmt::format(
 			"INSERT INTO {} ({}) ",
 			TableName(),
-			InsertColumnsRaw()
+			ColumnsRaw()
 		);
 	}
 
@@ -144,6 +114,7 @@ public:
 		entry.respawntime            = 0;
 		entry.variance               = 0;
 		entry.pathgrid               = 0;
+		entry.path_when_zone_idle    = 0;
 		entry._condition             = 0;
 		entry.cond_value             = 1;
 		entry.enabled                = 1;
@@ -171,10 +142,11 @@ public:
 	}
 
 	static Spawn2 FindOne(
+		Database& db,
 		int spawn2_id
 	)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} WHERE id = {} LIMIT 1",
 				BaseSelect(),
@@ -197,14 +169,15 @@ public:
 			entry.respawntime            = atoi(row[8]);
 			entry.variance               = atoi(row[9]);
 			entry.pathgrid               = atoi(row[10]);
-			entry._condition             = atoi(row[11]);
-			entry.cond_value             = atoi(row[12]);
-			entry.enabled                = atoi(row[13]);
-			entry.animation              = atoi(row[14]);
-			entry.min_expansion          = atoi(row[15]);
-			entry.max_expansion          = atoi(row[16]);
-			entry.content_flags          = row[17] ? row[17] : "";
-			entry.content_flags_disabled = row[18] ? row[18] : "";
+			entry.path_when_zone_idle    = atoi(row[11]);
+			entry._condition             = atoi(row[12]);
+			entry.cond_value             = atoi(row[13]);
+			entry.enabled                = atoi(row[14]);
+			entry.animation              = atoi(row[15]);
+			entry.min_expansion          = atoi(row[16]);
+			entry.max_expansion          = atoi(row[17]);
+			entry.content_flags          = row[18] ? row[18] : "";
+			entry.content_flags_disabled = row[19] ? row[19] : "";
 
 			return entry;
 		}
@@ -213,10 +186,11 @@ public:
 	}
 
 	static int DeleteOne(
+		Database& db,
 		int spawn2_id
 	)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"DELETE FROM {} WHERE {} = {}",
 				TableName(),
@@ -229,6 +203,7 @@ public:
 	}
 
 	static int UpdateOne(
+		Database& db,
 		Spawn2 spawn2_entry
 	)
 	{
@@ -246,16 +221,17 @@ public:
 		update_values.push_back(columns[8] + " = " + std::to_string(spawn2_entry.respawntime));
 		update_values.push_back(columns[9] + " = " + std::to_string(spawn2_entry.variance));
 		update_values.push_back(columns[10] + " = " + std::to_string(spawn2_entry.pathgrid));
-		update_values.push_back(columns[11] + " = " + std::to_string(spawn2_entry._condition));
-		update_values.push_back(columns[12] + " = " + std::to_string(spawn2_entry.cond_value));
-		update_values.push_back(columns[13] + " = " + std::to_string(spawn2_entry.enabled));
-		update_values.push_back(columns[14] + " = " + std::to_string(spawn2_entry.animation));
-		update_values.push_back(columns[15] + " = " + std::to_string(spawn2_entry.min_expansion));
-		update_values.push_back(columns[16] + " = " + std::to_string(spawn2_entry.max_expansion));
-		update_values.push_back(columns[17] + " = '" + EscapeString(spawn2_entry.content_flags) + "'");
-		update_values.push_back(columns[18] + " = '" + EscapeString(spawn2_entry.content_flags_disabled) + "'");
+		update_values.push_back(columns[11] + " = " + std::to_string(spawn2_entry.path_when_zone_idle));
+		update_values.push_back(columns[12] + " = " + std::to_string(spawn2_entry._condition));
+		update_values.push_back(columns[13] + " = " + std::to_string(spawn2_entry.cond_value));
+		update_values.push_back(columns[14] + " = " + std::to_string(spawn2_entry.enabled));
+		update_values.push_back(columns[15] + " = " + std::to_string(spawn2_entry.animation));
+		update_values.push_back(columns[16] + " = " + std::to_string(spawn2_entry.min_expansion));
+		update_values.push_back(columns[17] + " = " + std::to_string(spawn2_entry.max_expansion));
+		update_values.push_back(columns[18] + " = '" + EscapeString(spawn2_entry.content_flags) + "'");
+		update_values.push_back(columns[19] + " = '" + EscapeString(spawn2_entry.content_flags_disabled) + "'");
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"UPDATE {} SET {} WHERE {} = {}",
 				TableName(),
@@ -269,11 +245,13 @@ public:
 	}
 
 	static Spawn2 InsertOne(
+		Database& db,
 		Spawn2 spawn2_entry
 	)
 	{
 		std::vector<std::string> insert_values;
 
+		insert_values.push_back(std::to_string(spawn2_entry.id));
 		insert_values.push_back(std::to_string(spawn2_entry.spawngroupID));
 		insert_values.push_back("'" + EscapeString(spawn2_entry.zone) + "'");
 		insert_values.push_back(std::to_string(spawn2_entry.version));
@@ -284,6 +262,7 @@ public:
 		insert_values.push_back(std::to_string(spawn2_entry.respawntime));
 		insert_values.push_back(std::to_string(spawn2_entry.variance));
 		insert_values.push_back(std::to_string(spawn2_entry.pathgrid));
+		insert_values.push_back(std::to_string(spawn2_entry.path_when_zone_idle));
 		insert_values.push_back(std::to_string(spawn2_entry._condition));
 		insert_values.push_back(std::to_string(spawn2_entry.cond_value));
 		insert_values.push_back(std::to_string(spawn2_entry.enabled));
@@ -293,7 +272,7 @@ public:
 		insert_values.push_back("'" + EscapeString(spawn2_entry.content_flags) + "'");
 		insert_values.push_back("'" + EscapeString(spawn2_entry.content_flags_disabled) + "'");
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} VALUES ({})",
 				BaseInsert(),
@@ -312,6 +291,7 @@ public:
 	}
 
 	static int InsertMany(
+		Database& db,
 		std::vector<Spawn2> spawn2_entries
 	)
 	{
@@ -320,6 +300,7 @@ public:
 		for (auto &spawn2_entry: spawn2_entries) {
 			std::vector<std::string> insert_values;
 
+			insert_values.push_back(std::to_string(spawn2_entry.id));
 			insert_values.push_back(std::to_string(spawn2_entry.spawngroupID));
 			insert_values.push_back("'" + EscapeString(spawn2_entry.zone) + "'");
 			insert_values.push_back(std::to_string(spawn2_entry.version));
@@ -330,6 +311,7 @@ public:
 			insert_values.push_back(std::to_string(spawn2_entry.respawntime));
 			insert_values.push_back(std::to_string(spawn2_entry.variance));
 			insert_values.push_back(std::to_string(spawn2_entry.pathgrid));
+			insert_values.push_back(std::to_string(spawn2_entry.path_when_zone_idle));
 			insert_values.push_back(std::to_string(spawn2_entry._condition));
 			insert_values.push_back(std::to_string(spawn2_entry.cond_value));
 			insert_values.push_back(std::to_string(spawn2_entry.enabled));
@@ -344,7 +326,7 @@ public:
 
 		std::vector<std::string> insert_values;
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} VALUES {}",
 				BaseInsert(),
@@ -355,11 +337,11 @@ public:
 		return (results.Success() ? results.RowsAffected() : 0);
 	}
 
-	static std::vector<Spawn2> All()
+	static std::vector<Spawn2> All(Database& db)
 	{
 		std::vector<Spawn2> all_entries;
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{}",
 				BaseSelect()
@@ -382,14 +364,15 @@ public:
 			entry.respawntime            = atoi(row[8]);
 			entry.variance               = atoi(row[9]);
 			entry.pathgrid               = atoi(row[10]);
-			entry._condition             = atoi(row[11]);
-			entry.cond_value             = atoi(row[12]);
-			entry.enabled                = atoi(row[13]);
-			entry.animation              = atoi(row[14]);
-			entry.min_expansion          = atoi(row[15]);
-			entry.max_expansion          = atoi(row[16]);
-			entry.content_flags          = row[17] ? row[17] : "";
-			entry.content_flags_disabled = row[18] ? row[18] : "";
+			entry.path_when_zone_idle    = atoi(row[11]);
+			entry._condition             = atoi(row[12]);
+			entry.cond_value             = atoi(row[13]);
+			entry.enabled                = atoi(row[14]);
+			entry.animation              = atoi(row[15]);
+			entry.min_expansion          = atoi(row[16]);
+			entry.max_expansion          = atoi(row[17]);
+			entry.content_flags          = row[18] ? row[18] : "";
+			entry.content_flags_disabled = row[19] ? row[19] : "";
 
 			all_entries.push_back(entry);
 		}
@@ -397,11 +380,11 @@ public:
 		return all_entries;
 	}
 
-	static std::vector<Spawn2> GetWhere(std::string where_filter)
+	static std::vector<Spawn2> GetWhere(Database& db, std::string where_filter)
 	{
 		std::vector<Spawn2> all_entries;
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} WHERE {}",
 				BaseSelect(),
@@ -425,14 +408,15 @@ public:
 			entry.respawntime            = atoi(row[8]);
 			entry.variance               = atoi(row[9]);
 			entry.pathgrid               = atoi(row[10]);
-			entry._condition             = atoi(row[11]);
-			entry.cond_value             = atoi(row[12]);
-			entry.enabled                = atoi(row[13]);
-			entry.animation              = atoi(row[14]);
-			entry.min_expansion          = atoi(row[15]);
-			entry.max_expansion          = atoi(row[16]);
-			entry.content_flags          = row[17] ? row[17] : "";
-			entry.content_flags_disabled = row[18] ? row[18] : "";
+			entry.path_when_zone_idle    = atoi(row[11]);
+			entry._condition             = atoi(row[12]);
+			entry.cond_value             = atoi(row[13]);
+			entry.enabled                = atoi(row[14]);
+			entry.animation              = atoi(row[15]);
+			entry.min_expansion          = atoi(row[16]);
+			entry.max_expansion          = atoi(row[17]);
+			entry.content_flags          = row[18] ? row[18] : "";
+			entry.content_flags_disabled = row[19] ? row[19] : "";
 
 			all_entries.push_back(entry);
 		}
@@ -440,9 +424,9 @@ public:
 		return all_entries;
 	}
 
-	static int DeleteWhere(std::string where_filter)
+	static int DeleteWhere(Database& db, std::string where_filter)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"DELETE FROM {} WHERE {}",
 				TableName(),
@@ -453,9 +437,9 @@ public:
 		return (results.Success() ? results.RowsAffected() : 0);
 	}
 
-	static int Truncate()
+	static int Truncate(Database& db)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"TRUNCATE TABLE {}",
 				TableName()

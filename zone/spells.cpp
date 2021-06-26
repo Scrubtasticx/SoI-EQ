@@ -383,7 +383,7 @@ bool Mob::DoCastSpell(uint16 spell_id, uint16 target_id, CastingSlot slot,
 			Chat::SpellFailure,
 			(IsClient() ? FilterPCSpells : FilterNPCSpells),
 			(fizzle_msg == MISS_NOTE ? MISSED_NOTE_OTHER : SPELL_FIZZLE_OTHER),
-			/* 
+			/*
 				MessageFormat: You miss a note, bringing your song to a close! (if missed note)
 				MessageFormat: A missed note brings %1's song to a close!
 				MessageFormat: %1's spell fizzles!
@@ -1038,8 +1038,10 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, CastingSlot slo
 				// So long recast bard songs need special bard logic, although the effects don't repulse like other songs
 				// This is basically a hack to get that effect
 				// You can hold down the long recast spells, but you only get the effects once
+				// Songs with mana cost also do not repulse
+				// AAs that use SE_TemporaryPets or SE_Familiar also do not repulse
 				// TODO fuck bards.
-				if (spells[spell_id].recast_time == 0) {
+				if (spells[spell_id].recast_time == 0 && spells[spell_id].mana == 0 && !IsEffectInSpell(spell_id, SE_TemporaryPets) && !IsEffectInSpell(spell_id, SE_Familiar)) {
 					bardsong = spell_id;
 					bardsong_slot = slot;
 					//NOTE: theres a lot more target types than this to think about...
@@ -1233,7 +1235,7 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, CastingSlot slo
 				else {
 					if (!RuleB(Character, PetsUseReagents) && (IsEffectInSpell(spell_id, SE_SummonPet) || IsEffectInSpell(spell_id, SE_NecPet))) {
 						//bypass reagent cost
-					} 
+					}
 					else if(c->GetInv().HasItem(component, component_count, invWhereWorn|invWherePersonal) == -1) // item not found
 					{
 						if (!missingreags)
@@ -1417,7 +1419,9 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, CastingSlot slo
 		if(IsClient())
 		{
 			Client *c = CastToClient();
-			c->CheckSongSkillIncrease(spell_id);
+			if((IsFromItem  && RuleB(Character, SkillUpFromItems)) || !IsFromItem) {
+				c->CheckSongSkillIncrease(spell_id);
+			}
 			if (spells[spell_id].EndurTimerIndex > 0 && slot < CastingSlot::MaxGems)
 				c->SetLinkedSpellReuseTimer(spells[spell_id].EndurTimerIndex, spells[spell_id].recast_time / 1000);
 			c->MemorizeSpell(static_cast<uint32>(slot), spell_id, memSpellSpellbar);
@@ -1440,7 +1444,7 @@ void Mob::CastedSpellFinished(uint16 spell_id, uint32 target_id, CastingSlot slo
 			SetMana(GetMana());
 
 			// skills
-			if (EQ::skills::IsCastingSkill(spells[spell_id].skill)) {
+			if (EQ::skills::IsCastingSkill(spells[spell_id].skill) && ((IsFromItem  && RuleB(Character, SkillUpFromItems)) || !IsFromItem)) {
 				c->CheckIncreaseSkill(spells[spell_id].skill, nullptr);
 
 				// increased chance of gaining channel skill if you regained concentration
@@ -2042,6 +2046,34 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, CastingSlot slot, ui
 	if(!IsValidSpell(spell_id))
 		return false;
 
+	//Death Touch targets the pet owner instead of the pet when said pet is tanking.
+	if ((RuleB(Spells, CazicTouchTargetsPetOwner) && spell_target && spell_target->HasOwner()) && spell_id == SPELL_CAZIC_TOUCH || spell_id == SPELL_TOUCH_OF_VINITRAS) {
+		Mob* owner =  spell_target->GetOwner();
+
+		if (owner) {
+			spell_target = owner;
+		}
+	}
+
+  //Guard Assist Code
+	if (RuleB(Character, PVPEnableGuardFactionAssist) && spell_target && IsDetrimentalSpell(spell_id) && spell_target != this) {
+		if (IsClient() || (HasOwner() && GetOwner()->IsClient())) {
+			auto& mob_list = entity_list.GetCloseMobList(spell_target);
+			for (auto& e : mob_list) {
+				auto mob = e.second;
+				if (mob->IsNPC() && mob->CastToNPC()->IsGuard()) {
+					float distance = Distance(spell_target->GetPosition(), mob->GetPosition());
+					if ((mob->CheckLosFN(spell_target) || mob->CheckLosFN(this)) && distance <= 70) {
+						auto petorowner = GetOwnerOrSelf();
+						if (spell_target->GetReverseFactionCon(mob) <= petorowner->GetReverseFactionCon(mob)) {
+							mob->AddToHateList(this);
+						}
+					}
+				}
+			}
+    }
+  }
+
 	if( spells[spell_id].zonetype == 1 && !zone->CanCastOutdoor()){
 		if(IsClient()){
 				if(!CastToClient()->GetGM()){
@@ -2353,7 +2385,7 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, CastingSlot slot, ui
 					SpellOnTarget(spell_id, spell_target);
 	#ifdef GROUP_BUFF_PETS
 					//pet too
-					if (spells[spell_id].targettype != ST_GroupNoPets && spell_target->GetPet() && HasPetAffinity() && !spell_target->GetPet()->IsCharmed())
+					if (spells[spell_id].targettype != ST_GroupNoPets && spell_target->GetPet() && spell_target->HasPetAffinity() && !spell_target->GetPet()->IsCharmed())
 						SpellOnTarget(spell_id, spell_target->GetPet());
 	#endif
 				}
@@ -2388,8 +2420,6 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, CastingSlot slot, ui
 			break;
 		}
 	}
-
-	DoAnim(spells[spell_id].CastingAnim, 0, true, IsClient() ? FilterPCSpells : FilterNPCSpells);
 
 	// Set and send the nimbus effect if this spell has one
 	int NimbusEffect = GetNimbusEffect(spell_id);
@@ -2640,8 +2670,6 @@ bool Mob::ApplyNextBardPulse(uint16 spell_id, Mob *spell_target, CastingSlot slo
 		}
 	}
 
-	//do we need to do this???
-	DoAnim(spells[spell_id].CastingAnim, 0, true, IsClient() ? FilterPCSpells : FilterNPCSpells);
 	if(IsClient())
 		CastToClient()->CheckSongSkillIncrease(spell_id);
 
@@ -2649,6 +2677,12 @@ bool Mob::ApplyNextBardPulse(uint16 spell_id, Mob *spell_target, CastingSlot slo
 }
 
 void Mob::BardPulse(uint16 spell_id, Mob *caster) {
+	// so for Solon's Song of the Sirens (725) if we're repulsing, we need to skip
+	// other charms have mana and don't repulse
+	// This is probably not the ideal place for this, but it will work
+	if (IsCharmed() && GetOwner() == caster && IsEffectInSpell(spell_id, SE_Charm)) {
+		return;
+	}
 	int buffs_i;
 	int buff_count = GetMaxTotalSlots();
 	for (buffs_i = 0; buffs_i < buff_count; buffs_i++) {
@@ -3396,7 +3430,7 @@ int Mob::CanBuffStack(uint16 spellid, uint8 caster_level, bool iFailIfOverwrite)
 				firstfree = i;
 		}
 		if(ret == -1) {
-			
+
 			LogAI("Buff [{}] would conflict with [{}] in slot [{}], reporting stack failure", spellid, curbuf.spellid, i);
 			return -1;	// stop the spell, can't stack it
 		}
@@ -3531,7 +3565,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob *spelltar, bool reflect, bool use_r
 		spelltar, /* Sender */
 		action_packet, /* Packet */
 		true, /* Ignore Sender */
-		RuleI(Range, SpellMessages), 
+		RuleI(Range, SpellMessages),
 		this, /* Skip this Mob */
 		true, /* Packet ACK */
 		(spelltar->IsClient() ? FilterPCSpells : FilterNPCSpells) /* EQ Filter Type: (8 or 9) */
@@ -3603,33 +3637,36 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob *spelltar, bool reflect, bool use_r
 
 	// Prevent double invising, which made you uninvised
 	// Not sure if all 3 should be stacking
-	if(IsEffectInSpell(spell_id, SE_Invisibility))
-	{
-		if(spelltar->invisible)
-		{
-			spelltar->MessageString(Chat::SpellFailure, ALREADY_INVIS, GetCleanName());
-			safe_delete(action_packet);
-			return false;
-		}
-	}
 
-	if(IsEffectInSpell(spell_id, SE_InvisVsUndead))
-	{
-		if(spelltar->invisible_undead)
+	if (!RuleB(Spells, AllowDoubleInvis)) {
+		if (IsEffectInSpell(spell_id, SE_Invisibility))
 		{
-			spelltar->MessageString(Chat::SpellFailure, ALREADY_INVIS, GetCleanName());
-			safe_delete(action_packet);
-			return false;
+			if (spelltar->invisible)
+			{
+				spelltar->MessageString(Chat::SpellFailure, ALREADY_INVIS, GetCleanName());
+				safe_delete(action_packet);
+				return false;
+			}
 		}
-	}
 
-	if(IsEffectInSpell(spell_id, SE_InvisVsAnimals))
-	{
-		if(spelltar->invisible_animals)
+		if (IsEffectInSpell(spell_id, SE_InvisVsUndead))
 		{
-			spelltar->MessageString(Chat::SpellFailure, ALREADY_INVIS, GetCleanName());
-			safe_delete(action_packet);
-			return false;
+			if (spelltar->invisible_undead)
+			{
+				spelltar->MessageString(Chat::SpellFailure, ALREADY_INVIS, GetCleanName());
+				safe_delete(action_packet);
+				return false;
+			}
+		}
+
+		if (IsEffectInSpell(spell_id, SE_InvisVsAnimals))
+		{
+			if (spelltar->invisible_animals)
+			{
+				spelltar->MessageString(Chat::SpellFailure, ALREADY_INVIS, GetCleanName());
+				safe_delete(action_packet);
+				return false;
+			}
 		}
 	}
 
@@ -3871,7 +3908,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob *spelltar, bool reflect, bool use_r
 					spelltar->CastToClient()->BreakSneakWhenCastOn(this, true);
 					spelltar->CastToClient()->BreakFeignDeathWhenCastOn(true);
 				}
-				
+
 				spelltar->CheckNumHitsRemaining(NumHit::IncomingSpells);
 				CheckNumHitsRemaining(NumHit::OutgoingSpells);
 
@@ -3987,7 +4024,7 @@ bool Mob::SpellOnTarget(uint16 spell_id, Mob *spelltar, bool reflect, bool use_r
 			spelltar, /* Sender */
 			message_packet, /* Packet */
 			false, /* Ignore Sender */
-			RuleI(Range, SpellMessages), 
+			RuleI(Range, SpellMessages),
 			0, /* Skip this mob */
 			true, /* Packet ACK */
 			(spelltar->IsClient() ? FilterPCSpells : FilterNPCSpells) /* Message Filter Type: (8 or 9) */
@@ -4061,17 +4098,17 @@ bool Mob::FindBuff(uint16 spellid)
 uint16 Mob::FindBuffBySlot(int slot) {
 	if (buffs[slot].spellid != SPELL_UNKNOWN)
 		return buffs[slot].spellid;
-	
+
 	return 0;
 }
 
 uint32 Mob::BuffCount() {
 	uint32 active_buff_count = 0;
 	int buff_count = GetMaxTotalSlots();
-	for (int i = 0; i < buff_count; i++) 
+	for (int i = 0; i < buff_count; i++)
 		if (buffs[i].spellid != SPELL_UNKNOWN)
 			active_buff_count++;
-	
+
 	return active_buff_count;
 }
 
@@ -4527,7 +4564,7 @@ float Mob::ResistSpell(uint8 resist_type, uint16 spell_id, Mob *caster, bool use
 
 	// JULY 24, 2002 changes
 	int level = GetLevel();
-	if (IsPetOwnerClient() && caster->IsNPC() && !caster->IsPetOwnerClient()) {
+	if (RuleB(Spells,July242002PetResists) && IsPetOwnerClient() && caster->IsNPC() && !caster->IsPetOwnerClient()) {
 		auto owner = GetOwner();
 		if (owner != nullptr) {
 			target_resist = std::max(target_resist, owner->GetResist(resist_type));
@@ -4920,11 +4957,13 @@ void Mob::Stun(int duration)
 	if(stunned && stunned_timer.GetRemainingTime() > uint32(duration))
 		return;
 
-	if(IsValidSpell(casting_spell_id) && !spells[casting_spell_id].uninterruptable) {
+	auto spell_id = bardsong ? bardsong : casting_spell_id;
+
+	if(IsValidSpell(spell_id) && !spells[spell_id].uninterruptable) {
 		int persistent_casting = spellbonuses.PersistantCasting + itembonuses.PersistantCasting + aabonuses.PersistantCasting;
 
 		if(zone->random.Int(0,99) > persistent_casting)
-			InterruptSpell();
+			InterruptSpell(spell_id);
 	}
 
 	if(duration > 0)
@@ -4980,8 +5019,10 @@ void Mob::Mesmerize()
 {
 	mezzed = true;
 
-	if (casting_spell_id)
-		InterruptSpell();
+	auto spell_id = bardsong ? bardsong : casting_spell_id;
+
+	if (spell_id)
+		InterruptSpell(spell_id);
 
 	StopNavigation();
 }
@@ -5090,10 +5131,17 @@ void Client::UnmemSpellAll(bool update_client)
 			UnmemSpell(i, update_client);
 }
 
+uint32 Client::GetSpellIDByBookSlot(int book_slot) {
+	if (book_slot <= EQ::spells::SPELLBOOK_SIZE) {
+		return GetSpellByBookSlot(book_slot);
+	}
+	return -1;	//default
+}
+
 uint16 Client::FindMemmedSpellBySlot(int slot) {
 	if (m_pp.mem_spells[slot] != 0xFFFFFFFF)
 		return m_pp.mem_spells[slot];
-	
+
 	return 0;
 }
 
@@ -5102,7 +5150,7 @@ int Client::MemmedCount() {
 	for (int i = 0; i < EQ::spells::SPELL_GEM_COUNT; i++)
 		if (m_pp.mem_spells[i] != 0xFFFFFFFF)
 			memmed_count++;
-		
+
 	return memmed_count;
 }
 
@@ -5280,7 +5328,7 @@ bool Client::SpellBucketCheck(uint16 spell_id, uint32 char_id) {
 
 	if (results.RowCount() != 1)
 		return true;
-	
+
 	auto row = results.begin();
 	spell_bucket_name = row[0];
 	spell_bucket_value = atoi(row[1]);

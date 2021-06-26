@@ -1,13 +1,16 @@
 /*	EQEMu: Everquest Server Emulator
 	Copyright (C) 2001-2003 EQEMu Development Team (http://eqemulator.net)
+
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation; version 2 of the License.
+
 	This program is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY except by those people which sell it, which
 	are required to give you total support for your newly bought product;
 	without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
@@ -193,13 +196,13 @@ int32 Mob::GetActDoTDamage(uint16 spell_id, int32 value, Mob* target) {
 					int(GetFocusEffect(focusFcDamageAmtCrit, spell_id)*ratio/100) +
 					GetFocusEffect(focusFcDamageAmt, spell_id) +
 					GetFocusEffect(focusFcDamageAmt2, spell_id);
-					
+//Zycron Start					
 			if (RuleB(Spells, IgnoreSpellDmgLvlRestriction) && !spells[spell_id].no_heal_damage_item_mod && itembonuses.SpellDmg)
 				value -= GetExtraSpellAmt(spell_id, itembonuses.SpellDmg, value)*ratio / 100;
 
 			else if(!spells[spell_id].no_heal_damage_item_mod && itembonuses.SpellDmg && spells[spell_id].classes[(GetClass() % 17) - 1] >= GetLevel() - 5)
 				value -= GetExtraSpellAmt(spell_id, itembonuses.SpellDmg, value)*ratio/100;
-
+//Zycron End
 		if (extra_dmg) {
 			int duration = CalcBuffDuration(this, this, spell_id);
 			if (duration > 0)
@@ -219,13 +222,13 @@ int32 Mob::GetActDoTDamage(uint16 spell_id, int32 value, Mob* target) {
 					GetFocusEffect(focusFcDamageAmtCrit, spell_id) +
 					GetFocusEffect(focusFcDamageAmt, spell_id) +
 					GetFocusEffect(focusFcDamageAmt2, spell_id);
-					
+//Zycron Start					
 				if (RuleB(Spells, IgnoreSpellDmgLvlRestriction) && !spells[spell_id].no_heal_damage_item_mod && itembonuses.SpellDmg)
 					value -= GetExtraSpellAmt(spell_id, itembonuses.SpellDmg, value);
 
 				else if (!spells[spell_id].no_heal_damage_item_mod && itembonuses.SpellDmg && spells[spell_id].classes[(GetClass() % 17) - 1] >= GetLevel() - 5)
 					value -= GetExtraSpellAmt(spell_id, itembonuses.SpellDmg, value);
-
+//Zycron End
 		if (extra_dmg) {
 			int duration = CalcBuffDuration(this, this, spell_id);
 			if (duration > 0)
@@ -308,6 +311,7 @@ int32 Mob::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target) {
 		value += GetFocusEffect(focusFcHealAmt, spell_id);
 		value += target->GetFocusIncoming(focusFcHealAmtIncoming, SE_FcHealAmtIncoming, this, spell_id);
 
+//		if(!spells[spell_id].no_heal_damage_item_mod && itembonuses.HealAmt && spells[spell_id].classes[(GetClass()%17) - 1] >= GetLevel() - 5)
 		if(!spells[spell_id].no_heal_damage_item_mod && itembonuses.HealAmt && spells[spell_id].classes[(GetClass()%17) - 1] >= GetLevel() - 80)
 			value += GetExtraSpellAmt(spell_id, itembonuses.HealAmt, value) * modifier;
 
@@ -341,7 +345,7 @@ int32 Mob::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target) {
 		if(chance && zone->random.Roll(chance))
 			value *= 2;
 	}
-	
+//Zycron Start	
 		value *= modifier;
 		value += GetFocusEffect(focusFcHealAmt, spell_id);
 		value += target->GetFocusIncoming(focusFcHealAmtIncoming, SE_FcHealAmtIncoming, this, spell_id);
@@ -350,7 +354,7 @@ int32 Mob::GetActSpellHealing(uint16 spell_id, int32 value, Mob* target) {
 			value += GetExtraSpellAmt(spell_id, itembonuses.HealAmt, value) * modifier;
 
 		value += value*target->GetHealRate(spell_id, this)/100;
-
+//Zycron End
 	if (IsNPC() && CastToNPC()->GetHealScale())
 		value = int(static_cast<float>(value) * CastToNPC()->GetHealScale() / 100.0f);
 
@@ -423,29 +427,6 @@ int32 Mob::GetActSpellDuration(uint16 spell_id, int32 duration)
 		return ifocused;
 	else // even and not equal round to odd
 		return ifocused + 1;
-}
-
-int32 Client::GetActSpellCasttime(uint16 spell_id, int32 casttime)
-{
-	int32 cast_reducer = 0;
-	cast_reducer += GetFocusEffect(focusSpellHaste, spell_id);
-
-	//this function loops through the effects of spell_id many times
-	//could easily be consolidated.
-
-	if (GetLevel() >= 51 && casttime >= 3000 && !BeneficialSpell(spell_id)
-		&& (GetClass() == SHADOWKNIGHT || GetClass() == RANGER
-			|| GetClass() == PALADIN || GetClass() == BEASTLORD ))
-		cast_reducer += (GetLevel()-50)*3;
-
-	//LIVE AA SpellCastingDeftness, QuickBuff, QuickSummoning, QuickEvacuation, QuickDamage
-
-	if (cast_reducer > RuleI(Spells, MaxCastTimeReduction))
-		cast_reducer = RuleI(Spells, MaxCastTimeReduction);
-
-	casttime = (casttime*(100 - cast_reducer)/100);
-
-	return casttime;
 }
 
 bool Client::TrainDiscipline(uint32 itemid) {
@@ -548,6 +529,87 @@ bool Client::TrainDiscipline(uint32 itemid) {
 	}
 	Message(Chat::Red, "You have learned too many disciplines and can learn no more.");
 	return(false);
+}
+
+bool Client::MemorizeSpellFromItem(uint32 item_id) {
+	const EQ::ItemData *item = database.GetItem(item_id);
+	if(item == nullptr) {
+		Message(Chat::Red, "Unable to find the scroll!");
+		LogError("Unable to find scroll id [{}]\n", (unsigned long)item_id);
+		return false;
+	}
+
+	if (!item->IsClassCommon() || item->ItemType != EQ::item::ItemTypeSpell) {
+		Message(Chat::Red, "Invalid item type, you cannot learn from this item.");
+		SummonItem(item_id);
+		return false;
+	}
+
+	if(!(
+		item->Name[0] == 'S' &&
+		item->Name[1] == 'p' &&
+		item->Name[2] == 'e' &&
+		item->Name[3] == 'l' &&
+		item->Name[4] == 'l' &&
+		item->Name[5] == ':' &&
+		item->Name[6] == ' '
+		)) {
+		Message(Chat::Red, "This item is not a scroll.");
+		SummonItem(item_id);
+		return false;
+	}
+	int player_class = GetClass();
+	uint32 cbit = 1 << (player_class - 1);
+	if(!(item->Classes & cbit)) {
+		Message(Chat::Red, "Your class cannot learn from this scroll.");
+		SummonItem(item_id);
+		return false;
+	}
+
+	uint32 spell_id = item->Scroll.Effect;
+	if(!IsValidSpell(spell_id)) {
+		Message(Chat::Red, "This scroll contains invalid knowledge.");
+		return false;
+	}
+
+	const SPDat_Spell_Struct &spell = spells[spell_id];
+	uint8 level_to_use = spell.classes[player_class - 1];
+	if(level_to_use == 255) {
+		Message(Chat::Red, "Your class cannot learn from this scroll.");
+		SummonItem(item_id);
+		return false;
+	}
+
+	if(level_to_use > GetLevel()) {
+		Message(Chat::Red, "You must be at least level %d to learn this spell.", level_to_use);
+		SummonItem(item_id);
+		return false;
+	}
+
+	for(int index = 0; index < EQ::spells::SPELLBOOK_SIZE; index++) {
+		if (!HasSpellScribed(spell_id)) {
+			auto next_slot = GetNextAvailableSpellBookSlot();
+			if (next_slot != -1) {
+				ScribeSpell(spell_id, next_slot);
+				return true;
+			} else {
+				Message(
+					Chat::Red,
+					"Unable to scribe spell %s (%i) to spellbook: no more spell book slots available.",
+					((spell_id >= 0 && spell_id < SPDAT_RECORDS) ? spells[spell_id].name : "Out-of-range"),
+					spell_id
+				);
+				SummonItem(item_id);
+				return false;
+			}
+		} else {
+			Message(Chat::Red, "You already know this spell.");
+			SummonItem(item_id);
+			return false;
+		}
+	}
+	Message(Chat::Red, "You have learned too many spells and can learn no more.");
+	return false;
 }
 
 void Client::TrainDiscBySpellID(int32 spell_id)
@@ -682,7 +744,7 @@ bool Client::UseDiscipline(uint32 spell_id, uint32 target) {
 uint32 Client::GetDisciplineTimer(uint32 timer_id) {
 	pTimerType disc_timer_id = pTimerDisciplineReuseStart + timer_id;
 	uint32 disc_timer = 0;
-	if (GetPTimers().Enabled((uint32)disc_timer_id)) {
+	if (GetPTimers().Enabled(disc_timer_id)) {
 		disc_timer = GetPTimers().GetRemainingTime(disc_timer_id);
 	}
 	return disc_timer;
@@ -690,10 +752,31 @@ uint32 Client::GetDisciplineTimer(uint32 timer_id) {
 
 void Client::ResetDisciplineTimer(uint32 timer_id) {
 	pTimerType disc_timer_id = pTimerDisciplineReuseStart + timer_id;
-	if (GetPTimers().Enabled((uint32)disc_timer_id)) {
-		GetPTimers().Clear(&database, (uint32)disc_timer_id);
+	if (GetPTimers().Enabled(disc_timer_id)) {
+		GetPTimers().Clear(&database, disc_timer_id);
 	}
 	SendDisciplineTimer(timer_id, 0);
+}
+
+void Client::ResetAllDisciplineTimers() {
+	for (pTimerType disc_timer_id = pTimerDisciplineReuseStart; disc_timer_id <= pTimerDisciplineReuseEnd; disc_timer_id++) {
+		uint32 current_timer_id = (disc_timer_id - pTimerDisciplineReuseStart);
+		if (GetPTimers().Enabled(disc_timer_id)) {
+			GetPTimers().Clear(&database, disc_timer_id);
+		}
+		SendDisciplineTimer(current_timer_id, 0);
+	}
+}
+
+bool Client::HasDisciplineLearned(uint16 spell_id) {
+	bool has_learned = false;
+	for (auto index = 0; index < MAX_PP_DISCIPLINES; ++index) {
+		if (GetPP().disciplines.values[index] == spell_id) {
+			has_learned = true;
+			break;
+		}
+	}
+	return has_learned;
 }
 
 void Client::SendDisciplineTimer(uint32 timer_id, uint32 duration)
@@ -791,14 +874,14 @@ void EntityList::AESpell(
 	/**
 	 * Max AOE targets
 	 */
-	int max_targets_allowed = 0; // unlimited
+	int max_targets_allowed = RuleI(Range, AOEMaxTargets); // unlimited
 	if (max_targets) { // rains pass this in since they need to preserve the count through waves
 		max_targets_allowed = *max_targets;
 	}
 	else if (spells[spell_id].aemaxtargets) {
 		max_targets_allowed = spells[spell_id].aemaxtargets;
 	}
-	else if (IsTargetableAESpell(spell_id) && is_detrimental_spell && !is_npc) {
+	else if (IsTargetableAESpell(spell_id) && is_detrimental_spell && !is_npc && !IsEffectInSpell(spell_id, SE_Lull) && !IsEffectInSpell(spell_id, SE_Mez)) {
 		max_targets_allowed = 4;
 	}
 
@@ -924,6 +1007,9 @@ void EntityList::AESpell(
 			}
 		}
 
+		current_mob->CalcSpellPowerDistanceMod(spell_id, distance_to_target);
+		caster_mob->SpellOnTarget(spell_id, current_mob, false, true, resist_adjust);
+
 		/**
 		 * Increment hit count if max targets
 		 */
@@ -933,9 +1019,6 @@ void EntityList::AESpell(
 				break;
 			}
 		}
-
-		current_mob->CalcSpellPowerDistanceMod(spell_id, distance_to_target);
-		caster_mob->SpellOnTarget(spell_id, current_mob, false, true, resist_adjust);
 	}
 
 	LogAoeCast("Done iterating [{}]", caster_mob->GetCleanName());
@@ -1135,3 +1218,5 @@ void EntityList::AEAttack(
 		}
 	}
 }
+
+

@@ -897,15 +897,15 @@ void QuestManager::sfollow() {
 	owner->SetFollowID(0);
 }
 
-void QuestManager::changedeity(int diety_id) {
+void QuestManager::changedeity(int deity_id) {
 	QuestManagerCurrentQuestVars();
 	//Changes the deity.
 	if(initiator)
 	{
 		if(initiator->IsClient())
 		{
-			initiator->SetDeity(diety_id);
-			initiator->Message(Chat::Yellow,"Your Deity has been changed/set to: %i", diety_id);
+			initiator->SetDeity(deity_id);
+			initiator->Message(Chat::Yellow,"Your Deity has been changed/set to: %i", deity_id);
 			initiator->Save(1);
 			initiator->Kick("Deity change by QuestManager");
 		}
@@ -1044,6 +1044,31 @@ void QuestManager::snow(int weather) {
 	safe_delete(outapp);
 }
 
+void QuestManager::rename(std::string name) {
+	QuestManagerCurrentQuestVars();
+	if (initiator && initiator->IsClient()) {
+		std::string current_name = initiator->GetName();
+		if (initiator->ChangeFirstName(name.c_str(), current_name.c_str())) {
+			initiator->Message(
+				Chat::White,
+				fmt::format(
+					"Successfully renamed to {}, kicking to character select.",
+					name
+				).c_str()
+			);
+			initiator->Kick("Name was changed.");
+		} else {
+			initiator->Message(
+				Chat::Red,
+				fmt::format(
+					"Failed to rename {} to {}.",
+					current_name, name
+				).c_str()
+			);
+		}
+	}
+}
+
 void QuestManager::surname(const char *name) {
 	QuestManagerCurrentQuestVars();
 	//Changes the last name.
@@ -1088,174 +1113,64 @@ void QuestManager::permagender(int gender_id) {
 uint16 QuestManager::scribespells(uint8 max_level, uint8 min_level) {
 	QuestManagerCurrentQuestVars();
 	int book_slot = initiator->GetNextAvailableSpellBookSlot();
-	int spell_id = 0;
-	int count = 0;
-
-	uint32 char_id = initiator->CharacterID();
-	bool SpellGlobalRule = RuleB(Spells, EnableSpellGlobals);
-	bool SpellBucketRule = RuleB(Spells, EnableSpellBuckets);
-	bool SpellGlobalCheckResult = false;
-	bool SpellBucketCheckResult = false;
-
-	for ( ; spell_id < SPDAT_RECORDS && book_slot < EQ::spells::SPELLBOOK_SIZE; ++spell_id) {
-		if (book_slot == -1) {
-			initiator->Message(
-				13,
-				"Unable to scribe spell %s (%i) to spellbook: no more spell book slots available.",
-				((spell_id >= 0 && spell_id < SPDAT_RECORDS) ? spells[spell_id].name : "Out-of-range"),
-				spell_id
-			);
-
-			break;
-		}
-		if (spell_id < 0 || spell_id >= SPDAT_RECORDS) {
-			initiator->Message(Chat::Red, "FATAL ERROR: Spell id out-of-range (id: %i, min: 0, max: %i)", spell_id, SPDAT_RECORDS);
-			return count;
-		}
-		if (book_slot < 0 || book_slot >= EQ::spells::SPELLBOOK_SIZE) {
-			initiator->Message(Chat::Red, "FATAL ERROR: Book slot out-of-range (slot: %i, min: 0, max: %i)", book_slot, EQ::spells::SPELLBOOK_SIZE);
-			return count;
-		}
-
-		while (true) {
-			if (spells[spell_id].classes[WARRIOR] == 0) // check if spell exists
+	std::vector<int> spell_ids = initiator->GetScribeableSpells(min_level, max_level);
+	int spell_count = spell_ids.size();
+	int spells_learned = 0;
+	if (spell_count > 0) {
+		for (auto spell_id : spell_ids) {
+			if (book_slot == -1) {			
+				initiator->Message(
+					Chat::Red,
+					"Unable to scribe spell %s (%i) to Spell Book: Spell Book is Full.", spells[spell_id].name, spell_id
+				);
 				break;
-			if (spells[spell_id].classes[initiator->GetPP().class_ - 1] > max_level) // maximum level
-				break;
-			if (spells[spell_id].classes[initiator->GetPP().class_ - 1] < min_level) // minimum level
-				break;
-			if (spells[spell_id].skill == 52)
-				break;
-			if (spells[spell_id].effectid[EFFECT_COUNT - 1] == 10)
-				break;
-
-			uint16 spell_id_ = (uint16)spell_id;
-			if ((spell_id_ != spell_id) || (spell_id != spell_id_)) {
-				initiator->Message(Chat::Red, "FATAL ERROR: Type conversion data loss with spell_id (%i != %u)", spell_id, spell_id_);
-				return count;
 			}
-
-			if (!IsDiscipline(spell_id_) && !initiator->HasSpellScribed(spell_id)) { // isn't a discipline & we don't already have it scribed
-				if (SpellGlobalRule) {
-					// bool to see if the character has the required QGlobal to scribe it if one exists in the Spell_Globals table
-					SpellGlobalCheckResult = initiator->SpellGlobalCheck(spell_id_, char_id);
-					if (SpellGlobalCheckResult) {
-						initiator->ScribeSpell(spell_id_, book_slot);
-						++count;
-					}
-				}
-				else if (SpellBucketRule) {
-					// bool to see if the character has the required bucket to train it if one exists in the spell_buckets table
-					SpellBucketCheckResult = initiator->SpellBucketCheck(spell_id_, char_id);
-					if (SpellBucketCheckResult) {
-						initiator->ScribeSpell(spell_id_, book_slot);
-						++count;
-					}
-				}
-				else {
-					initiator->ScribeSpell(spell_id_, book_slot);
-					++count;
-				}
-			}
-
-			break;
+			
+			if (initiator->HasSpellScribed(spell_id))
+				continue;
+				
+			initiator->ScribeSpell(spell_id, book_slot);
+			book_slot = initiator->GetNextAvailableSpellBookSlot(book_slot);
+			spells_learned++;
 		}
-
-		book_slot = initiator->GetNextAvailableSpellBookSlot(book_slot);
 	}
 
-	return count; // how many spells were scribed successfully
+	if (spells_learned > 0) {
+		std::string spell_message = (spells_learned == 1 ? "a new spell" : fmt::format("{} new spells", spells_learned));
+		initiator->Message(Chat::White, fmt::format("You have learned {}!", spell_message).c_str());
+	}
+	return spells_learned;
 }
 
 uint16 QuestManager::traindiscs(uint8 max_level, uint8 min_level) {
 	QuestManagerCurrentQuestVars();
-	int spell_id = 0;
-	int count = 0;
+	int character_id = initiator->CharacterID();
+	std::vector<int> spell_ids = initiator->GetLearnableDisciplines(min_level, max_level);
+	int discipline_count = spell_ids.size();
+	int disciplines_learned = 0;
+	if (discipline_count > 0) {
+		for (auto spell_id : spell_ids) {
+			if (initiator->HasDisciplineLearned(spell_id))
+				continue;
 
-	uint32 char_id = initiator->CharacterID();
-	bool SpellGlobalRule = RuleB(Spells, EnableSpellGlobals);
-	bool SpellBucketRule = RuleB(Spells, EnableSpellBuckets);
-	bool SpellGlobalCheckResult = false;
-	bool SpellBucketCheckResult = false;
-
-	bool change = false;
-
-	for( ; spell_id < SPDAT_RECORDS; ++spell_id) {
-		if (spell_id < 0 || spell_id >= SPDAT_RECORDS) {
-			initiator->Message(Chat::Red, "FATAL ERROR: Spell id out-of-range (id: %i, min: 0, max: %i)", spell_id, SPDAT_RECORDS);
-			return count;
-		}
-
-		while (true) {
-			if (spells[spell_id].classes[WARRIOR] == 0) // check if spell exists
-				break;
-			if (spells[spell_id].classes[initiator->GetPP().class_ - 1] > max_level) // maximum level
-				break;
-			if (spells[spell_id].classes[initiator->GetPP().class_ - 1] < min_level) // minimum level
-				break;
-			if (spells[spell_id].skill == 52)
-				break;
-			if (RuleB(Spells, UseCHAScribeHack) && spells[spell_id].effectid[EFFECT_COUNT - 1] == 10)
-				break;
-
-			uint16 spell_id_ = (uint16)spell_id;
-			if ((spell_id_ != spell_id) || (spell_id != spell_id_)) {
-				initiator->Message(Chat::Red, "FATAL ERROR: Type conversion data loss with spell_id (%i != %u)", spell_id, spell_id_);
-				return count;
-			}
-
-			if (!IsDiscipline(spell_id_))
-				break;
-
-			for (uint32 r = 0; r < MAX_PP_DISCIPLINES; r++) {
-				if (initiator->GetPP().disciplines.values[r] == spell_id_) {
-					initiator->Message(Chat::Red, "You already know this discipline.");
-					break; // continue the 1st loop
-				}
-				else if (initiator->GetPP().disciplines.values[r] == 0) {
-					if (SpellGlobalRule) {
-						// bool to see if the character has the required QGlobal to train it if one exists in the Spell_Globals table
-						SpellGlobalCheckResult = initiator->SpellGlobalCheck(spell_id_, char_id);
-						if (SpellGlobalCheckResult) {
-							initiator->GetPP().disciplines.values[r] = spell_id_;
-							database.SaveCharacterDisc(char_id, r, spell_id_);
-							change = true;
-							initiator->Message(Chat::White, "You have learned a new discipline!");
-							++count; // success counter
-						}
-						break; // continue the 1st loop
-					}
-					else if (SpellBucketRule) {
-						// bool to see if the character has the required bucket to train it if one exists in the spell_buckets table
-						SpellBucketCheckResult = initiator->SpellBucketCheck(spell_id_, char_id);
-						if (SpellBucketCheckResult) {
-							initiator->GetPP().disciplines.values[r] = spell_id_;
-							database.SaveCharacterDisc(char_id, r, spell_id_);
-							change = true;
-							initiator->Message(Chat::White, "You have learned a new discipline!");
-							++count;
-						}
-						break;
-					}
-					else {
-						initiator->GetPP().disciplines.values[r] = spell_id_;
-						database.SaveCharacterDisc(char_id, r, spell_id_);
-						change = true;;
-						initiator->Message(Chat::White, "You have learned a new discipline!");
-						++count; // success counter
-						break; // continue the 1st loop
-					}
+			for (uint32 index = 0; index < MAX_PP_DISCIPLINES; index++) {
+				if (initiator->GetPP().disciplines.values[index] == 0) {
+					initiator->GetPP().disciplines.values[index] = spell_id;
+					database.SaveCharacterDisc(character_id, index, spell_id);
+					disciplines_learned++;
+					break;
 				}
 			}
-
-			break;
 		}
 	}
 
-	if (change)
+	if (disciplines_learned > 0) {
+		std::string discipline_message = (disciplines_learned == 1 ? "a new discipline" : fmt::format("{} new disciplines", disciplines_learned));
 		initiator->SendDisciplineUpdate();
+		initiator->Message(Chat::White, fmt::format("You have learned {}!", discipline_message).c_str());
+	}
 
-	return count; // how many disciplines were learned successfully
+	return disciplines_learned;
 }
 
 void QuestManager::unscribespells() {
@@ -1783,10 +1698,17 @@ void QuestManager::ding() {
 
 }
 
-void QuestManager::rebind(int zoneid, const glm::vec3& location) {
+void QuestManager::rebind(int zone_id, const glm::vec3& location) {
 	QuestManagerCurrentQuestVars();
 	if(initiator && initiator->IsClient()) {
-		initiator->SetBindPoint(0, zoneid, 0, location);
+		initiator->SetBindPoint(0, zone_id, 0, location);
+	}
+}
+
+void QuestManager::rebind(int zone_id, const glm::vec4& location) {
+	QuestManagerCurrentQuestVars();
+	if(initiator && initiator->IsClient()) {
+		initiator->SetBindPoint2(0, zone_id, 0, location);
 	}
 }
 
@@ -1830,22 +1752,22 @@ void QuestManager::resume() {
 	owner->CastToNPC()->ResumeWandering();
 }
 
-void QuestManager::addldonpoints(int32 points, uint32 theme) {
+void QuestManager::addldonpoints(uint32 theme_id, int points) {
 	QuestManagerCurrentQuestVars();
 	if(initiator)
-		initiator->UpdateLDoNPoints(points, theme);
+		initiator->UpdateLDoNPoints(theme_id, points);
 }
 
-void QuestManager::addldonwin(int32 wins, uint32 theme) {
+void QuestManager::addldonloss(uint32 theme_id) {
 	QuestManagerCurrentQuestVars();
 	if(initiator)
-		initiator->UpdateLDoNWins(theme, wins);
+		initiator->AddLDoNLoss(theme_id);
 }
 
-void QuestManager::addldonloss(int32 losses, uint32 theme) {
+void QuestManager::addldonwin(uint32 theme_id) {
 	QuestManagerCurrentQuestVars();
 	if(initiator)
-		initiator->UpdateLDoNLosses(theme, losses);
+		initiator->AddLDoNWin(theme_id);
 }
 
 void QuestManager::setnexthpevent(int at) {
@@ -2350,27 +2272,27 @@ bool QuestManager::createBot(const char *name, const char *lastname, uint8 level
 
 void QuestManager::taskselector(int taskcount, int *tasks) {
 	QuestManagerCurrentQuestVars();
-	if(RuleB(TaskSystem, EnableTaskSystem) && initiator && owner && taskmanager)
+	if(RuleB(TaskSystem, EnableTaskSystem) && initiator && owner && task_manager)
 		initiator->TaskQuestSetSelector(owner, taskcount, tasks);
 }
 void QuestManager::enabletask(int taskcount, int *tasks) {
 	QuestManagerCurrentQuestVars();
 
-	if(RuleB(TaskSystem, EnableTaskSystem) && initiator && taskmanager)
+	if(RuleB(TaskSystem, EnableTaskSystem) && initiator && task_manager)
 		initiator->EnableTask(taskcount, tasks);
 }
 
 void QuestManager::disabletask(int taskcount, int *tasks) {
 	QuestManagerCurrentQuestVars();
 
-	if(RuleB(TaskSystem, EnableTaskSystem) && initiator && taskmanager)
+	if(RuleB(TaskSystem, EnableTaskSystem) && initiator && task_manager)
 		initiator->DisableTask(taskcount, tasks);
 }
 
 bool QuestManager::istaskenabled(int taskid) {
 	QuestManagerCurrentQuestVars();
 
-	if(RuleB(TaskSystem, EnableTaskSystem) && initiator && taskmanager)
+	if(RuleB(TaskSystem, EnableTaskSystem) && initiator && task_manager)
 		return initiator->IsTaskEnabled(taskid);
 
 	return false;
@@ -2379,7 +2301,7 @@ bool QuestManager::istaskenabled(int taskid) {
 void QuestManager::tasksetselector(int tasksetid) {
 	QuestManagerCurrentQuestVars();
 	Log(Logs::General, Logs::Tasks, "[UPDATE] TaskSetSelector called for task set %i", tasksetid);
-	if(RuleB(TaskSystem, EnableTaskSystem) && initiator && owner && taskmanager)
+	if(RuleB(TaskSystem, EnableTaskSystem) && initiator && owner && task_manager)
 		initiator->TaskSetSelector(owner, tasksetid);
 }
 
@@ -2468,8 +2390,8 @@ int QuestManager::enabledtaskcount(int taskset) {
 int QuestManager::firsttaskinset(int taskset) {
 	QuestManagerCurrentQuestVars();
 
-	if(RuleB(TaskSystem, EnableTaskSystem) && taskmanager)
-		return taskmanager->FirstTaskInSet(taskset);
+	if(RuleB(TaskSystem, EnableTaskSystem) && task_manager)
+		return task_manager->FirstTaskInSet(taskset);
 
 	return -1;
 }
@@ -2477,8 +2399,8 @@ int QuestManager::firsttaskinset(int taskset) {
 int QuestManager::lasttaskinset(int taskset) {
 	QuestManagerCurrentQuestVars();
 
-	if(RuleB(TaskSystem, EnableTaskSystem) && taskmanager)
-		return taskmanager->LastTaskInSet(taskset);
+	if(RuleB(TaskSystem, EnableTaskSystem) && task_manager)
+		return task_manager->LastTaskInSet(taskset);
 
 	return -1;
 }
@@ -2486,8 +2408,8 @@ int QuestManager::lasttaskinset(int taskset) {
 int QuestManager::nexttaskinset(int taskset, int taskid) {
 	QuestManagerCurrentQuestVars();
 
-	if(RuleB(TaskSystem, EnableTaskSystem) && taskmanager)
-		return taskmanager->NextTaskInSet(taskset, taskid);
+	if(RuleB(TaskSystem, EnableTaskSystem) && task_manager)
+		return task_manager->NextTaskInSet(taskset, taskid);
 
 	return -1;
 }
@@ -2539,8 +2461,8 @@ int QuestManager::completedtasksinset(int taskset) {
 bool QuestManager::istaskappropriate(int task) {
 	QuestManagerCurrentQuestVars();
 
-	if(RuleB(TaskSystem, EnableTaskSystem) && initiator && taskmanager)
-		return taskmanager->AppropriateLevel(task, initiator->GetLevel());
+	if(RuleB(TaskSystem, EnableTaskSystem) && initiator && task_manager)
+		return task_manager->ValidateLevel(task, initiator->GetLevel());
 
 	return false;
 }
@@ -2549,7 +2471,7 @@ std::string QuestManager::gettaskname(uint32 task_id) {
 	QuestManagerCurrentQuestVars();
 
 	if (RuleB(TaskSystem, EnableTaskSystem)) {
-		return taskmanager->GetTaskName(task_id);
+		return task_manager->GetTaskName(task_id);
 	}
 
 	return std::string();
@@ -2578,6 +2500,24 @@ void QuestManager::ze(int type, const char *str) {
 
 void QuestManager::we(int type, const char *str) {
 	worldserver.SendEmoteMessage(0, 0, type, str);
+}
+
+void QuestManager::message(int color, const char *message) {
+	QuestManagerCurrentQuestVars();
+	if (!initiator)
+		return;
+	
+	initiator->Message(color, message);
+}
+
+void QuestManager::whisper(const char *message) {
+	QuestManagerCurrentQuestVars();
+	if (!initiator || !owner)
+		return;
+
+	std::string mob_name = owner->GetCleanName();
+	std::string new_message = fmt::format("{} whispers, '{}'", mob_name, message);
+	initiator->Message(315, new_message.c_str());
 }
 
 int QuestManager::getlevel(uint8 type)
@@ -2705,28 +2645,12 @@ int QuestManager::collectitems(uint32 item_id, bool remove)
 
 int QuestManager::countitem(uint32 item_id) {
 	QuestManagerCurrentQuestVars();
-	int quantity = 0;
-	EQ::ItemInstance *item = nullptr;
-	static const int16 slots[][2] = {
-		{ EQ::invslot::POSSESSIONS_BEGIN, EQ::invslot::POSSESSIONS_END },
-		{ EQ::invbag::GENERAL_BAGS_BEGIN, EQ::invbag::GENERAL_BAGS_END },
-		{ EQ::invbag::CURSOR_BAG_BEGIN, EQ::invbag::CURSOR_BAG_END},
-		{ EQ::invslot::BANK_BEGIN, EQ::invslot::BANK_END },
-		{ EQ::invbag::BANK_BAGS_BEGIN, EQ::invbag::BANK_BAGS_END },
-		{ EQ::invslot::SHARED_BANK_BEGIN, EQ::invslot::SHARED_BANK_END },
-		{ EQ::invbag::SHARED_BANK_BAGS_BEGIN, EQ::invbag::SHARED_BANK_BAGS_END },
-	};
-	const size_t size = sizeof(slots) / sizeof(slots[0]);
-	for (int slot_index = 0; slot_index < size; ++slot_index) {
-		for (int slot_id = slots[slot_index][0]; slot_id <= slots[slot_index][1]; ++slot_id) {
-			item = initiator->GetInv().GetItem(slot_id);
-			if (item && item->GetID() == item_id) {
-				quantity += item->IsStackable() ? item->GetCharges() : 1;
-			}
-		}
-	}
+	return initiator->CountItem(item_id);
+}
 
-	return quantity;
+void QuestManager::removeitem(uint32 item_id, uint32 quantity) {
+	QuestManagerCurrentQuestVars();
+	initiator->RemoveItem(item_id, quantity);
 }
 
 void QuestManager::UpdateSpawnTimer(uint32 id, uint32 newTime)
@@ -2829,11 +2753,20 @@ std::string QuestManager::getitemname(uint32 item_id) {
 	return item_name;
 }
 
-const char *QuestManager::getnpcnamebyid(uint32 npc_id) {
+std::string QuestManager::getnpcnamebyid(uint32 npc_id) {
+	std::string res;
 	if (npc_id > 0) {
-		return database.GetNPCNameByID(npc_id);
+		res = database.GetNPCNameByID(npc_id);
 	}
-	return "";
+	return res;
+}
+
+std::string QuestManager::getcleannpcnamebyid(uint32 npc_id) {
+	std::string res;
+	if (npc_id > 0) {
+		res = database.GetCleanNPCNameByID(npc_id);
+	}
+	return res;
 }
 
 uint16 QuestManager::CreateInstance(const char *zone, int16 version, uint32 duration)
@@ -3039,11 +2972,12 @@ std::string QuestManager::saylink(char *saylink_text, bool silent, const char *l
 	return EQ::SayLinkEngine::GenerateQuestSaylink(saylink_text, silent, link_name);
 }
 
-const char* QuestManager::getcharnamebyid(uint32 char_id) {
+std::string QuestManager::getcharnamebyid(uint32 char_id) {
+	std::string res;
 	if (char_id > 0) {
-		return database.GetCharNameByID(char_id);
+		res = database.GetCharNameByID(char_id);
 	}
-	return "";
+	return res;
 }
 
 uint32 QuestManager::getcharidbyname(const char* name) {
@@ -3272,13 +3206,17 @@ int32 QuestManager::GetZoneID(const char *zone) {
 	return static_cast<int32>(ZoneID(zone));
 }
 
-const char* QuestManager::GetZoneLongName(const char *zone) {
-	char *long_name;
-	content_db.GetZoneLongName(zone, &long_name);
-	std::string ln = long_name;
-	safe_delete_array(long_name);
+std::string QuestManager::GetZoneLongName(std::string zone_short_name)
+{
+	return ZoneLongName(ZoneID(zone_short_name));
+}
 
-	return ln.c_str();
+std::string QuestManager::GetZoneLongNameByID(uint32 zone_id) {
+	return ZoneLongName(zone_id);
+}
+
+std::string QuestManager::GetZoneShortName(uint32 zone_id) {
+	return ZoneName(zone_id);
 }
 
 void QuestManager::CrossZoneAssignTaskByCharID(int character_id, uint32 task_id, bool enforce_level_requirement) {
@@ -3958,7 +3896,7 @@ void QuestManager::CrossZoneUpdateActivityByGuildID(int guild_id, uint32 task_id
 	}
 }
 
-void QuestManager::WorldWideAssignTask(uint32 task_id, bool enforce_level_requirement, uint8 min_status, uint8 max_status) {	
+void QuestManager::WorldWideAssignTask(uint32 task_id, bool enforce_level_requirement, uint8 min_status, uint8 max_status) {
 	QuestManagerCurrentQuestVars();
 	if (initiator && owner) {
 		auto pack = new ServerPacket(ServerOP_WWAssignTask, sizeof(WWAssignTask_Struct));
@@ -4203,6 +4141,15 @@ Mob *QuestManager::GetOwner() const {
 	return nullptr;
 }
 
+EQ::InventoryProfile *QuestManager::GetInventory() const {
+	if(!quests_running_.empty()) {
+		running_quest e = quests_running_.top();
+		return &e.initiator->GetInv();
+	}
+
+	return nullptr;
+}
+
 EQ::ItemInstance *QuestManager::GetQuestItem() const {
 	if(!quests_running_.empty()) {
 		running_quest e = quests_running_.top();
@@ -4292,3 +4239,411 @@ void QuestManager::UpdateZoneHeader(std::string type, std::string value) {
 	entity_list.QueueClients(0, outapp);
 	safe_delete(outapp);
 }
+
+EQ::ItemInstance *QuestManager::CreateItem(uint32 item_id, int16 charges, uint32 augment_one, uint32 augment_two, uint32 augment_three, uint32 augment_four, uint32 augment_five, uint32 augment_six, bool attuned) const {
+	if (database.GetItem(item_id)) {
+		return database.CreateItem(item_id, charges, augment_one, augment_two, augment_three, augment_four, augment_five, augment_six, attuned);
+	}
+	return nullptr;
+}
+
+std::string QuestManager::secondstotime(int duration) {
+	int timer_length = duration;
+	int hours = int(timer_length / 3600);
+	timer_length %= 3600;
+	int minutes = int(timer_length / 60);
+	timer_length %= 60;
+	int seconds = timer_length;
+	std::string time_string = "Unknown";
+	std::string hour_string = (hours == 1 ? "Hour" : "Hours");
+	std::string minute_string = (minutes == 1 ? "Minute" : "Minutes");
+	std::string second_string = (seconds == 1 ? "Second" : "Seconds");
+	if (hours > 0 && minutes > 0 && seconds > 0) {
+		time_string = fmt::format("{} {}, {} {}, and {} {}", hours, hour_string, minutes, minute_string, seconds, second_string);
+	} else if (hours > 0 && minutes > 0 && seconds == 0) {
+		time_string = fmt::format("{} {} and {} {}", hours, hour_string, minutes, minute_string);
+	} else if (hours > 0 && minutes == 0 && seconds > 0) {
+		time_string = fmt::format("{} {} and {} {}", hours, hour_string, seconds, second_string);
+	} else if (hours > 0 && minutes == 0 && seconds == 0) {
+		time_string = fmt::format("{} {}", hours, hour_string);
+	} else if (hours == 0 && minutes > 0 && seconds > 0) {
+		time_string = fmt::format("{} {} and {} {}", minutes, minute_string, seconds, second_string);
+	} else if (hours == 0 && minutes > 0 && seconds == 0) {
+		time_string = fmt::format("{} {}", minutes, minute_string);
+	} else if (hours == 0 && minutes == 0 && seconds > 0) {
+		time_string = fmt::format("{} {}", seconds, second_string);
+	}
+	return time_string;
+}
+
+std::string QuestManager::gethexcolorcode(std::string color_name) {
+	static const std::map<std::string, std::string> colors = {
+		{ "Black", "#000000" },
+		{ "Brown", "#804000" },
+		{ "Burgundy", "#800000" },
+		{ "Cadet Blue", "#77BFC7" },
+		{ "Cadet Blue1", "#4C787E" },
+		{ "Chartreuse", "#8AFB17" },
+		{ "Chartreuse1", "#7FE817" },
+		{ "Chartreuse2", "#6CC417" },
+		{ "Chartreuse3", "#437C17" },
+		{ "Chocolate", "#C85A17" },
+		{ "Coral", "#F76541" },
+		{ "Coral1", "#E55B3C" },
+		{ "Coral2", "#C34A2C" },
+		{ "Cornflower Blue", "#151B8D" },
+		{ "Cyan", "#00FFFF" },
+		{ "Cyan1", "#57FEFF" },
+		{ "Cyan2", "#50EBEC" },
+		{ "Cyan3", "#46C7C7" },
+		{ "Cyan4", "#307D7E" },
+		{ "Dark Blue", "#0000A0" },
+		{ "Dark Goldenrod", "#AF7817" },
+		{ "Dark Goldenrod1", "#FBB117" },
+		{ "Dark Goldenrod2", "#E8A317" },
+		{ "Dark Goldenrod3", "#C58917" },
+		{ "Dark Goldenrod4", "#7F5217" },
+		{ "Dark Green", "#254117" },
+		{ "Dark Grey", "#808080" },
+		{ "Dark Olive Green", "#CCFB5D" },
+		{ "Dark Olive Green2", "#BCE954" },
+		{ "Dark Olive Green3", "#A0C544" },
+		{ "Dark Olive Green4", "#667C26" },
+		{ "Dark Orange", "#F88017" },
+		{ "Dark Orange1", "#F87217" },
+		{ "Dark Orange2", "#E56717" },
+		{ "Dark Orange3", "#7E3117" },
+		{ "Dark Orange3", "#C35617" },
+		{ "Dark Orchid", "#7D1B7E" },
+		{ "Dark Orchid1", "#B041FF" },
+		{ "Dark Orchid2", "#A23BEC" },
+		{ "Dark Orchid3", "#8B31C7" },
+		{ "Dark Orchid4", "#571B7e" },
+		{ "Dark Purple", "#800080" },
+		{ "Dark Salmon", "#E18B6B" },
+		{ "Dark Sea Green", "#8BB381" },
+		{ "Dark Sea Green1", "#C3FDB8" },
+		{ "Dark Sea Green2", "#B5EAAA" },
+		{ "Dark Sea Green3", "#99C68E" },
+		{ "Dark Sea Green4", "#617C58" },
+		{ "Dark Slate Blue", "#2B3856" },
+		{ "Dark Slate Gray", "#25383C" },
+		{ "Dark Slate Gray1", "#9AFEFF" },
+		{ "Dark Slate Gray2", "#8EEBEC" },
+		{ "Dark Slate Gray3", "#78c7c7" },
+		{ "Dark Slate Gray4", "#4C7D7E" },
+		{ "Dark Turquoise", "#3B9C9C" },
+		{ "Dark Violet", "#842DCE" },
+		{ "Deep Pink", "#F52887" },
+		{ "Deep Pink1", "#E4287C" },
+		{ "Deep Pink2", "#C12267" },
+		{ "Deep Pink3", "#7D053F" },
+		{ "Deep Sky Blue", "#3BB9FF" },
+		{ "Deep Sky Blue1", "#38ACEC" },
+		{ "Deep Sky Blue2", "#3090C7" },
+		{ "Deep Sky Blue3", "#25587E" },
+		{ "Dim Gray", "#463E41" },
+		{ "Dodger Blue", "#1589FF" },
+		{ "Dodger Blue1", "#157DEC" },
+		{ "Dodger Blue2", "#1569C7" },
+		{ "Dodger Blue3", "#153E7E" },
+		{ "Firebrick", "#800517" },
+		{ "Firebrick1", "#F62817" },
+		{ "Firebrick2", "#E42217" },
+		{ "Firebrick3", "#C11B17" },
+		{ "Forest Green", "#4E9258" },
+		{ "Forest Green1", "#808000" },
+		{ "Gold", "#D4A017" },
+		{ "Gold1", "#FDD017" },
+		{ "Gold2", "#EAC117" },
+		{ "Gold3", "#C7A317" },
+		{ "Gold4", "#806517" },
+		{ "Goldenrod", "#EDDA74" },
+		{ "Goldenrod1", "#FBB917" },
+		{ "Goldenrod2", "#E9AB17" },
+		{ "Goldenrod3", "#C68E17" },
+		{ "Goldenrod4", "#805817" },
+		{ "Grass Green", "#408080" },
+		{ "Gray", "#736F6E" },
+		{ "Gray1", "#150517" },
+		{ "Gray2", "#250517" },
+		{ "Gray3", "#2B1B17" },
+		{ "Gray4", "#302217" },
+		{ "Gray5", "#302226" },
+		{ "Gray6", "#342826" },
+		{ "Gray7", "#34282C" },
+		{ "Gray8", "#382D2C" },
+		{ "Gray9", "#3b3131" },
+		{ "Gray10", "#3E3535" },
+		{ "Gray11", "#413839" },
+		{ "Gray12", "#41383C" },
+		{ "Gray13", "#463E3F" },
+		{ "Gray14", "#4A4344" },
+		{ "Gray15", "#4C4646" },
+		{ "Gray16", "#4E4848" },
+		{ "Gray17", "#504A4B" },
+		{ "Gray18", "#544E4F" },
+		{ "Gray19", "#565051" },
+		{ "Gray19", "#595454" },
+		{ "Gray20", "#5C5858" },
+		{ "Gray21", "#5F5A59" },
+		{ "Gray22", "#625D5D" },
+		{ "Gray23", "#646060" },
+		{ "Gray24", "#666362" },
+		{ "Gray25", "#696565" },
+		{ "Gray26", "#6D6968" },
+		{ "Gray27", "#6E6A6B" },
+		{ "Gray28", "#726E6D" },
+		{ "Gray29", "#747170" },
+		{ "Green", "#00FF00" },
+		{ "Green1", "#5FFB17" },
+		{ "Green2", "#59E817" },
+		{ "Green3", "#4CC417" },
+		{ "Green4", "#347C17" },
+		{ "Green Yellow", "#B1FB17" },
+		{ "Hot Pink", "#F660AB" },
+		{ "Hot Pink1", "#F665AB" },
+		{ "Hot Pink2", "#E45E9D" },
+		{ "Hot Pink3", "#C25283" },
+		{ "Hot Pink4", "#7D2252" },
+		{ "Indian Red", "#F75D59" },
+		{ "Indian Red2", "#E55451" },
+		{ "Indian Red3", "#C24641" },
+		{ "Indian Red4", "#7E2217" },
+		{ "Khaki", "#ADA96E" },
+		{ "Khaki1", "#FFF380" },
+		{ "Khaki2", "#EDE275" },
+		{ "Khaki3", "#C9BE62" },
+		{ "Khaki4", "#827839" },
+		{ "Lavender", "#E3E4FA" },
+		{ "Lavender Blush", "#FDEEF4" },
+		{ "Lavender Blush1", "#EBDDE2" },
+		{ "Lavender Blush2", "#C8BBBE" },
+		{ "Lavender Blush3", "#817679" },
+		{ "Lawn Green", "#87F717" },
+		{ "Lemon Chiffon", "#FFF8C6" },
+		{ "Lemon Chiffon1", "#ECE5B6" },
+		{ "Lemon Chiffon2", "#C9C299" },
+		{ "Lemon Chiffon3", "#827B60" },
+		{ "Light Blue", "#0000FF" },
+		{ "Light Blue1", "#ADDFFF" },
+		{ "Light Blue2", "#BDEDFF" },
+		{ "Light Blue3", "#AFDCEC" },
+		{ "Light Blue4", "#95B9C7" },
+		{ "Light Blue5", "#5E767E" },
+		{ "Light Coral", "#E77471" },
+		{ "Light Cyan", "#E0FFFF" },
+		{ "Light Cyan1", "#CFECEC" },
+		{ "Light Cyan2", "#AFC7C7" },
+		{ "Light Cyan3", "#717D7D" },
+		{ "Light Golden", "#ECD672" },
+		{ "Light Goldenrod", "#ECD872" },
+		{ "Light Goldenrod1", "#FFE87C" },
+		{ "Light Goldenrod2", "#C8B560" },
+		{ "Light Goldenrod3", "#817339" },
+		{ "Light Goldenrod Yellow", "#FAF8CC" },
+		{ "Light Grey", "#C0C0C0" },
+		{ "Light Pink", "#FAAFBA" },
+		{ "Light Pink1", "#F9A7B0" },
+		{ "Light Pink2", "#E799A3" },
+		{ "Light Pink3", "#C48189" },
+		{ "Light Pink4", "#7F4E52" },
+		{ "Light Purple", "#FF0080" },
+		{ "Light Salmon", "#F9966B" },
+		{ "Light Salmon1", "#E78A61" },
+		{ "Light Salmon2", "#C47451" },
+		{ "Light Salmon3", "#7F462C" },
+		{ "Light Sea Green", "#3EA99F" },
+		{ "Light Sky Blue", "#82CAFA" },
+		{ "Light Sky Blue1", "#A0CFEC" },
+		{ "Light Sky Blue2", "#87AFC7" },
+		{ "Light Sky Blue3", "#566D7E" },
+		{ "Light Slate Blue", "#736AFF" },
+		{ "Light Slate Gray", "#6D7B8D" },
+		{ "Light Steel Blue", "#728FCE" },
+		{ "Light Steel Blue1", "#C6DEFF" },
+		{ "Light Steel Blue2", "#B7CEEC" },
+		{ "Light Steel Blue3", "#646D7E" },
+		{ "Lime Green", "#41A317" },
+		{ "Magenta", "#FF00FF" },
+		{ "Magenta1", "#F433FF" },
+		{ "Magenta2", "#E238EC" },
+		{ "Magenta3", "#C031C7" },
+		{ "Maroon", "#810541" },
+		{ "Maroon1", "#F535AA" },
+		{ "Maroon2", "#E3319D" },
+		{ "Maroon3", "#C12283" },
+		{ "Maroon4", "#7D0552" },
+		{ "Medium Aquamarine", "#348781" },
+		{ "Medium Forest Green", "#347235" },
+		{ "Medium Orchid", "#B048B5" },
+		{ "Medium Orchid1", "#D462FF" },
+		{ "Medium Orchid2", "#C45AEC" },
+		{ "Medium Orchid3", "#A74AC7" },
+		{ "Medium Orchid4", "#6A287E" },
+		{ "Medium Purple", "#8467D7" },
+		{ "Medium Purple1", "#9E7BFF" },
+		{ "Medium Purple2", "#9172EC" },
+		{ "Medium Purple3", "#7A5DC7" },
+		{ "Medium Purple4", "#4E387E" },
+		{ "Medium Sea Green", "#306754" },
+		{ "Medium Slate Blue", "#5E5A80" },
+		{ "Medium Spring Green", "#348017" },
+		{ "Medium Turquoise", "#48CCCD" },
+		{ "Medium Violet Red", "#CA226B" },
+		{ "Midnight Blue", "#151B54" },
+		{ "Orange", "#FF8040" },
+		{ "Pale Turquoise", "#92C7C7" },
+		{ "Pale Turquoise1", "#5E7D7E" },
+		{ "Pale Violet Red", "#D16587" },
+		{ "Pale Violet Red1", "#F778A1" },
+		{ "Pale Violet Red2", "#E56E94" },
+		{ "Pale Violet Red3", "#C25A7C" },
+		{ "Pale Violet Red4", "#7E354D" },
+		{ "Pastel Green", "#00FF00" },
+		{ "Pink", "#FAAFBE" },
+		{ "Pink1", "#FF00FF" },
+		{ "Pink2", "#E7A1B0" },
+		{ "Pink3", "#C48793" },
+		{ "Pink4", "#7F525D" },
+		{ "Plum", "#B93B8F" },
+		{ "Plum1", "#F9B7FF" },
+		{ "Plum2", "#E6A9EC" },
+		{ "Plum3", "#C38EC7" },
+		{ "Plum4", "#7E587E" },
+		{ "Purple", "#8E35EF" },
+		{ "Purple1", "#893BFF" },
+		{ "Purple2", "#7F38EC" },
+		{ "Purple3", "#6C2DC7" },
+		{ "Purple4", "#461B7E" },
+		{ "Red", "#FF0000" },
+		{ "Red1", "#F62217" },
+		{ "Red2", "#E41B17" },
+		{ "Rosy Brown", "#B38481" },
+		{ "Rosy Brown1", "#FBBBB9" },
+		{ "Rosy Brown2", "#E8ADAA" },
+		{ "Rosy Brown3", "#C5908E" },
+		{ "Rosy Brown4", "#7F5A58" },
+		{ "Royal Blue", "#2B60DE" },
+		{ "Royal Blue1", "#306EFF" },
+		{ "Royal Blue2", "#2B65EC" },
+		{ "Royal Blue3", "#2554C7" },
+		{ "Royal Blue4", "#15317E" },
+		{ "Salmon1", "#F88158" },
+		{ "Salmon2", "#E67451" },
+		{ "Salmon3", "#C36241" },
+		{ "Salmon4", "#7E3817" },
+		{ "Sandy Brown", "#EE9A4D" },
+		{ "Sea Green", "#4E8975" },
+		{ "Sea Green1", "#6AFB92" },
+		{ "Sea Green2", "#64E986" },
+		{ "Sea Green3", "#54C571" },
+		{ "Sea Green4", "#387C44" },
+		{ "Sienna", "#8A4117" },
+		{ "Sienna1", "#F87431" },
+		{ "Sienna2", "#E66C2C" },
+		{ "Sienna3", "#C35817" },
+		{ "Sienna4", "#7E3517" },
+		{ "Sky Blue", "#82CAFF" },
+		{ "Sky Blue1", "#6698FF" },
+		{ "Sky Blue2", "#79BAEC" },
+		{ "Sky Blue3", "#659EC7" },
+		{ "Sky Blue4", "#41627E" },
+		{ "Slate Blue", "#357EC7" },
+		{ "Slate Blue1", "#737CA1" },
+		{ "Slate Blue2", "#6960EC" },
+		{ "Slate Blue3", "#342D7E" },
+		{ "Slate Gray", "#657383" },
+		{ "Slate Gray1", "#C2DFFF" },
+		{ "Slate Gray2", "#B4CFEC" },
+		{ "Slate Gray3", "#98AFC7" },
+		{ "Slate Gray4", "#616D7E" },
+		{ "Spring Green", "#4AA02C" },
+		{ "Spring Green1", "#5EFB6E" },
+		{ "Spring Green2", "#57E964" },
+		{ "Spring Green3", "#4CC552" },
+		{ "Spring Green4", "#347C2C" },
+		{ "Steel Blue", "#4863A0" },
+		{ "Steel Blue1", "#5CB3FF" },
+		{ "Steel Blue2", "#56A5EC" },
+		{ "Steel Blue3", "#488AC7" },
+		{ "Steel Blue4", "#2B547E" },
+		{ "Thistle", "#D2B9D3" },
+		{ "Thistle1", "#FCDFFF" },
+		{ "Thistle2", "#E9CFEC" },
+		{ "Thistle3", "#C6AEC7" },
+		{ "Thistle4", "#806D7E" },
+		{ "Turquoise", "#00FFFF" },
+		{ "Turquoise1", "#43C6DB" },
+		{ "Turquoise2", "#52F3FF" },
+		{ "Turquoise3", "#4EE2EC" },
+		{ "Turquoise4", "#43BFC7" },
+		{ "Violet", "#8D38C9" },
+		{ "Violet Red", "#F6358A" },
+		{ "Violet Red1", "#F6358A" },
+		{ "Violet Red2", "#E4317F" },
+		{ "Violet Red3", "#C12869" },
+		{ "Violet Red4", "#7D0541" },
+		{ "White", "#FFFFFF" },
+		{ "Yellow", "#FFFF00" },
+		{ "Yellow1", "#FFFC17" },
+		{ "Yellow Green", "#52D017" }
+	};
+	for (auto color : colors) {
+		if (!strcasecmp(color.first.c_str(), color_name.c_str())) {
+			return color.second;
+		}
+	}
+
+	return std::string();
+}
+
+double QuestManager::GetAAEXPModifierByCharID(uint32 character_id, uint32 zone_id) const {
+	return database.GetAAEXPModifier(character_id, zone_id);
+}
+
+double QuestManager::GetEXPModifierByCharID(uint32 character_id, uint32 zone_id) const {
+	return database.GetEXPModifier(character_id, zone_id);
+}
+
+void QuestManager::SetAAEXPModifierByCharID(uint32 character_id, uint32 zone_id, double aa_modifier) {
+	database.SetAAEXPModifier(character_id, zone_id, aa_modifier);
+}
+
+void QuestManager::SetEXPModifierByCharID(uint32 character_id, uint32 zone_id, double exp_modifier) {
+	database.SetEXPModifier(character_id, zone_id, exp_modifier);
+}
+
+void QuestManager::CrossZoneLDoNUpdate(uint8 type, uint8 subtype, int identifier, uint32 theme_id, int points) {
+	auto pack = new ServerPacket(ServerOP_CZLDoNUpdate, sizeof(CZLDoNUpdate_Struct));
+	CZLDoNUpdate_Struct* CZLU = (CZLDoNUpdate_Struct*)pack->pBuffer;
+	CZLU->update_type = type;
+	CZLU->update_subtype = subtype;
+	CZLU->update_identifier = identifier;
+	CZLU->theme_id = theme_id;
+	CZLU->points = points;
+	worldserver.SendPacket(pack);
+	safe_delete(pack);
+}
+
+std::string QuestManager::getgendername(uint32 gender_id) {
+	auto gender_name = "Unknown";
+	if (gender_id == MALE) {
+		gender_name = "Male";
+	} else if (gender_id == FEMALE) {
+		gender_name = "Female";
+	} else if (gender_id == NEUTER) {
+		gender_name = "Neuter";
+	}
+	return gender_name;
+}
+
+std::string QuestManager::getdeityname(uint32 deity_id) {
+	return EQ::deity::DeityName(static_cast<EQ::deity::DeityType>(deity_id));
+}
+
+std::string QuestManager::getinventoryslotname(int16 slot_id) {
+	return EQ::invslot::GetInvPossessionsSlotName(slot_id);
+}
+
+

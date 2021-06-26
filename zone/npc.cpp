@@ -230,8 +230,13 @@ NPC::NPC(const NPCType *npc_type_data, Spawn2 *in_respawn, const glm::vec4 &posi
 	adventure_template_id = npc_type_data->adventure_template;
 	flymode               = iflymode;
 
+	// If server has set a flymode in db honor it over all else.
+	// If server has not set a flymde in db, and this is a boat - force floating.
 	if (npc_type_data->flymode >= 0) {
 		flymode = static_cast<GravityBehavior>(npc_type_data->flymode);
+	}
+	else if (IsBoat()) {
+		flymode = GravityBehavior::Floating;
 	}
 
 	guard_anim            = eaStanding;
@@ -279,6 +284,19 @@ NPC::NPC(const NPCType *npc_type_data, Spawn2 *in_respawn, const glm::vec4 &posi
 	entity_list.MakeNameUnique(name);
 
 	npc_aggro = npc_type_data->npc_aggro;
+	
+	AISpellVar.fail_recast                     = static_cast<uint32>(RuleI(Spells, AI_SpellCastFinishedFailRecast));
+	AISpellVar.engaged_no_sp_recast_min        = static_cast<uint32>(RuleI(Spells, AI_EngagedNoSpellMinRecast));
+	AISpellVar.engaged_no_sp_recast_max        = static_cast<uint32>(RuleI(Spells, AI_EngagedNoSpellMaxRecast));
+	AISpellVar.engaged_beneficial_self_chance  = static_cast<uint8> (RuleI(Spells, AI_EngagedBeneficialSelfChance));
+	AISpellVar.engaged_beneficial_other_chance = static_cast<uint8> (RuleI(Spells, AI_EngagedBeneficialOtherChance));
+	AISpellVar.engaged_detrimental_chance      = static_cast<uint8> (RuleI(Spells, AI_EngagedDetrimentalChance));
+	AISpellVar.pursue_no_sp_recast_min         = static_cast<uint32>(RuleI(Spells, AI_PursueNoSpellMinRecast));
+	AISpellVar.pursue_no_sp_recast_max         = static_cast<uint32>(RuleI(Spells, AI_PursueNoSpellMaxRecast));
+	AISpellVar.pursue_detrimental_chance       = static_cast<uint8> (RuleI(Spells, AI_PursueDetrimentalChance));
+	AISpellVar.idle_no_sp_recast_min           = static_cast<uint32>(RuleI(Spells, AI_IdleNoSpellMinRecast));
+	AISpellVar.idle_no_sp_recast_max           = static_cast<uint32>(RuleI(Spells, AI_IdleNoSpellMaxRecast));
+	AISpellVar.idle_beneficial_chance          = static_cast<uint8> (RuleI(Spells, AI_IdleBeneficialChance));
 
 	AI_Init();
 	AI_Start();
@@ -304,7 +322,7 @@ NPC::NPC(const NPCType *npc_type_data, Spawn2 *in_respawn, const glm::vec4 &posi
 	//give NPCs skill values...
 	int r;
 	for (r = 0; r <= EQ::skills::HIGHEST_SKILL; r++) {
-		skills[r] = database.GetSkillCap(GetClass(), (EQ::skills::SkillType)r, moblevel);
+		skills[r] = content_db.GetSkillCap(GetClass(), (EQ::skills::SkillType)r, moblevel);
 	}
 	// some overrides -- really we need to be able to set skills for mobs in the DB
 	// There are some known low level SHM/BST pets that do not follow this, which supports
@@ -392,18 +410,10 @@ NPC::NPC(const NPCType *npc_type_data, Spawn2 *in_respawn, const glm::vec4 &posi
 
 	SetMana(GetMaxMana());
 
-	AISpellVar.fail_recast                     = static_cast<uint32>(RuleI(Spells, AI_SpellCastFinishedFailRecast));
-	AISpellVar.engaged_no_sp_recast_min        = static_cast<uint32>(RuleI(Spells, AI_EngagedNoSpellMinRecast));
-	AISpellVar.engaged_no_sp_recast_max        = static_cast<uint32>(RuleI(Spells, AI_EngagedNoSpellMaxRecast));
-	AISpellVar.engaged_beneficial_self_chance  = static_cast<uint8> (RuleI(Spells, AI_EngagedBeneficialSelfChance));
-	AISpellVar.engaged_beneficial_other_chance = static_cast<uint8> (RuleI(Spells, AI_EngagedBeneficialOtherChance));
-	AISpellVar.engaged_detrimental_chance      = static_cast<uint8> (RuleI(Spells, AI_EngagedDetrimentalChance));
-	AISpellVar.pursue_no_sp_recast_min         = static_cast<uint32>(RuleI(Spells, AI_PursueNoSpellMinRecast));
-	AISpellVar.pursue_no_sp_recast_max         = static_cast<uint32>(RuleI(Spells, AI_PursueNoSpellMaxRecast));
-	AISpellVar.pursue_detrimental_chance       = static_cast<uint8> (RuleI(Spells, AI_PursueDetrimentalChance));
-	AISpellVar.idle_no_sp_recast_min           = static_cast<uint32>(RuleI(Spells, AI_IdleNoSpellMinRecast));
-	AISpellVar.idle_no_sp_recast_max           = static_cast<uint32>(RuleI(Spells, AI_IdleNoSpellMaxRecast));
-	AISpellVar.idle_beneficial_chance          = static_cast<uint8> (RuleI(Spells, AI_IdleBeneficialChance));
+	if (GetBodyType() == BT_Animal && !RuleB(NPC, AnimalsOpenDoors)) {
+		m_can_open_doors = false;
+	}
+
 }
 
 float NPC::GetRoamboxMaxX() const
@@ -715,7 +725,7 @@ bool NPC::Process()
 		}
 		return false;
 	}
-	
+
 	if (IsStunned() && stunned_timer.Check()) {
 		Mob::UnStun();
 		this->spun_timer.Disable();
@@ -723,22 +733,27 @@ bool NPC::Process()
 
 	SpellProcess();
 
-	if (mob_scan_close.Check()) {
-
-		entity_list.ScanCloseMobs(close_mobs, this);
-
-		if (moving) {
-			mob_scan_close.Disable();
-			mob_scan_close.Start(RandomTimer(3000, 6000));
-		}
-		else {
-			mob_scan_close.Disable();
-			mob_scan_close.Start(RandomTimer(6000, 60000));
-		}
+	if (mob_close_scan_timer.Check()) {
+		entity_list.ScanCloseMobs(close_mobs, this, IsMoving());
 	}
 
-	if (mob_check_moving_timer.Check() && moving) {
-		mob_scan_close.Trigger();
+	const uint16 npc_mob_close_scan_timer_moving = 6000;
+	const uint16 npc_mob_close_scan_timer_idle   = 60000;
+
+	if (mob_check_moving_timer.Check()) {
+		if (moving) {
+			if (mob_close_scan_timer.GetRemainingTime() > npc_mob_close_scan_timer_moving) {
+				LogAIScanCloseDetail("NPC [{}] Restarting with moving timer", GetCleanName());
+				mob_close_scan_timer.Disable();
+				mob_close_scan_timer.Start(npc_mob_close_scan_timer_moving);
+				mob_close_scan_timer.Trigger();
+			}
+		}
+		else if (mob_close_scan_timer.GetDuration() == npc_mob_close_scan_timer_moving) {
+			LogAIScanCloseDetail("NPC [{}] Restarting with idle timer", GetCleanName());
+			mob_close_scan_timer.Disable();
+			mob_close_scan_timer.Start(npc_mob_close_scan_timer_idle);
+		}
 	}
 
 	if (tic_timer.Check()) {
@@ -901,6 +916,10 @@ bool NPC::Process()
 
 	if (assist_timer.Check() && IsEngaged() && !Charmed() && !HasAssistAggro() &&
 	    NPCAssistCap() < RuleI(Combat, NPCAssistCap)) {
+		// Some cases like flash of light used for aggro haven't set target
+		if (!GetTarget()) {
+			SetTarget(hate_list.GetEntWithMostHateOnList(this));
+		}
 		AIYellForHelp(this, GetTarget());
 		if (NPCAssistCap() > 0 && !assist_cap_timer.Enabled())
 			assist_cap_timer.Start(RuleI(Combat, NPCAssistCapTimer));
@@ -963,9 +982,12 @@ void NPC::Depop(bool StartSpawnTimer) {
 	if(emoteid != 0)
 		this->DoNPCEmote(ONDESPAWN,emoteid);
 	p_depop = true;
-	if (StartSpawnTimer) {
-		if (respawn2 != 0) {
+	if (respawn2)
+	{
+		if (StartSpawnTimer) {
 			respawn2->DeathReset();
+		} else {
+			respawn2->Depop();
 		}
 	}
 }
@@ -1077,8 +1099,7 @@ bool NPC::SpawnZoneController()
 	return true;
 }
 
-void NPC::SpawnGridNodeNPC(const glm::vec4 &position, int32 grid_number, int32 zoffset) {
-
+void NPC::SpawnGridNodeNPC(const glm::vec4 &position, int32 grid_id, int32 grid_number, int32 zoffset) {
 	auto npc_type = new NPCType;
 	memset(npc_type, 0, sizeof(NPCType));
 
@@ -1090,31 +1111,30 @@ void NPC::SpawnGridNodeNPC(const glm::vec4 &position, int32 grid_number, int32 z
 		strcat(npc_type->name, "(Stacked)");
 	}
 
-	npc_type->current_hp       = 4000000;
-	npc_type->max_hp           = 4000000;
-	npc_type->race             = 2254;
-	npc_type->gender           = 2;
-	npc_type->class_           = 9;
-	npc_type->deity            = 1;
-	npc_type->level            = 200;
-	npc_type->npc_id           = 0;
-	npc_type->loottable_id     = 0;
-	npc_type->texture          = 1;
-	npc_type->light            = 1;
-	npc_type->size             = 1;
-	npc_type->runspeed         = 0;
-	npc_type->merchanttype     = 1;
-	npc_type->bodytype         = 1;
-	npc_type->show_name        = true;
-	npc_type->findable         = true;
+	npc_type->current_hp = 4000000;
+	npc_type->max_hp = 4000000;
+	npc_type->race = 2254;
+	npc_type->gender = 2;
+	npc_type->class_ = 9;
+	npc_type->deity = 1;
+	npc_type->level = 200;
+	npc_type->npc_id = 0;
+	npc_type->loottable_id = 0;
+	npc_type->texture = 1;
+	npc_type->light = 1;
+	npc_type->size = 1;
+	npc_type->runspeed = 0;
+	npc_type->merchanttype = 1;
+	npc_type->bodytype = 1;
+	npc_type->show_name = true;
+	npc_type->findable = true;
+	strn0cpy(npc_type->special_abilities, "24,1^35,1", 512);
 
 	auto node_position = glm::vec4(position.x, position.y, position.z, position.w);
-	auto npc           = new NPC(npc_type, nullptr, node_position, GravityBehavior::Flying);
-
-	npc->name[strlen(npc->name)-3] = (char) NULL;
-
+	auto npc = new NPC(npc_type, nullptr, node_position, GravityBehavior::Flying);
+	npc->name[strlen(npc->name) - 3] = (char) NULL;
 	npc->GiveNPCTypeData(npc_type);
-
+	npc->SetEntityVariable("grid_id", itoa(grid_id));
 	entity_list.AddNPC(npc);
 }
 
@@ -1747,7 +1767,7 @@ void NPC::PickPocket(Client* thief)
 			steal_item = false;
 			break;
 		}
-		
+
 		auto item_inst = database.CreateItem(loot_selection[random].first, loot_selection[random].second);
 		if (item_inst == nullptr) {
 			steal_item = false;
@@ -1773,7 +1793,7 @@ void NPC::PickPocket(Client* thief)
 
 	while (!steal_item && has_coin) {
 		uint32 coin_amount = zone->random.Int(1, (steal_skill / 25) + 1);
-		
+
 		int coin_type = PickPocketPlatinum;
 		while (coin_type <= PickPocketCopper) {
 			if (money[coin_type]) {
@@ -2236,8 +2256,12 @@ void NPC::PetOnSpawn(NewSpawn_Struct* ns)
 		if (RuleB(Pets, UnTargetableSwarmPet))
 		{
 			ns->spawn.bodytype = 11;
-			if(!IsCharmed() && swarmOwner->IsClient())
-				sprintf(ns->spawn.lastName, "%s's Pet", swarmOwner->GetName());
+			if(!IsCharmed() && swarmOwner->IsClient()) {
+				std::string tmp_lastname = swarmOwner->GetName();
+				tmp_lastname += "'s Pet";
+				if (tmp_lastname.size() < sizeof(ns->spawn.lastName))
+					strn0cpy(ns->spawn.lastName, tmp_lastname.c_str(), sizeof(ns->spawn.lastName));
+			}
 		}
 	}
 	else if(GetOwnerID())
@@ -2249,7 +2273,10 @@ void NPC::PetOnSpawn(NewSpawn_Struct* ns)
 			if(client)
 			{
 				SetPetOwnerClient(true);
-				sprintf(ns->spawn.lastName, "%s's Pet", client->GetName());
+				std::string tmp_lastname = client->GetName();
+				tmp_lastname += "'s Pet";
+				if (tmp_lastname.size() < sizeof(ns->spawn.lastName))
+					strn0cpy(ns->spawn.lastName, tmp_lastname.c_str(), sizeof(ns->spawn.lastName));
 			}
 		}
 	}
@@ -2509,10 +2536,10 @@ void NPC::LevelScale() {
 					max_hp += (random_level - level) * 100;
 					base_hp += (random_level - level) * 100;
 				}
-				
+
 				current_hp = max_hp;
 			}
-			
+
 			// Don't add max_dmg to dynamically scaled NPCs since this will be calculated later
 			if (max_dmg > 0  || skip_auto_scale)
 			{
@@ -2812,7 +2839,7 @@ FACTION_VALUE NPC::CheckNPCFactionAlly(int32 other_faction) {
 
 	// I believe that the assumption is, barring no entry in npc_faction_entries
 	// that two npcs on like faction con ally to each other.  This catches cases
-	// where an npc is on a faction but has no hits (hence no entry in 
+	// where an npc is on a faction but has no hits (hence no entry in
 	// npc_faction_entries).
 
 	if (GetPrimaryFaction() == other_faction)
@@ -3192,6 +3219,11 @@ bool NPC::AICheckCloseBeneficialSpells(
  */
 void NPC::AIYellForHelp(Mob *sender, Mob *attacker)
 {
+	LogAIYellForHelp("Mob[{}] Target[{}]",
+		(sender == nullptr ? "NULL MOB" : GetCleanName()),
+		(attacker == nullptr ? "NULL TARGET" : attacker->GetCleanName())
+		);
+
 	if (!sender || !attacker) {
 		return;
 	}
@@ -3200,11 +3232,14 @@ void NPC::AIYellForHelp(Mob *sender, Mob *attacker)
 	 * If we dont have a faction set, we're gonna be indiff to everybody
 	 */
 	if (sender->GetPrimaryFaction() == 0) {
+		LogAIYellForHelp("No Primary Faction");
 		return;
 	}
 
-	if (sender->HasAssistAggro())
+	if (sender->HasAssistAggro()) {
+		LogAIYellForHelp("I have assist aggro");
 		return;
+	}
 
 	LogAIYellForHelp(
 		"NPC [{}] ID [{}] is starting to scan",
@@ -3221,6 +3256,19 @@ void NPC::AIYellForHelp(Mob *sender, Mob *attacker)
 		}
 
 		float assist_range = (mob->GetAssistRange() * mob->GetAssistRange());
+
+		// Implement optional sneak-pull
+		if (RuleB(Combat, EnableSneakPull) && attacker->sneaking) {
+			assist_range = RuleI(Combat, SneakPullAssistRange);
+			if (attacker->IsClient()) {
+				float clientx = attacker->GetX();
+				float clienty = attacker->GetY();
+				if (attacker->CastToClient()->BehindMob(mob, clientx, clienty)) {
+					assist_range = 0;
+				}
+			}
+		}
+
 		if (distance > assist_range) {
 			continue;
 		}
@@ -3256,17 +3304,16 @@ void NPC::AIYellForHelp(Mob *sender, Mob *attacker)
 			 * then jump in if they are our friend
 			 */
 			if (mob->GetLevel() >= 50 || attacker->GetLevelCon(mob->GetLevel()) != CON_GRAY) {
-				bool use_primary_faction = false;
 				if (mob->GetPrimaryFaction() == sender->CastToNPC()->GetPrimaryFaction()) {
 					const NPCFactionList *cf = content_db.GetNPCFactionEntry(mob->CastToNPC()->GetNPCFactionID());
 					if (cf) {
-						if (cf->assistprimaryfaction != 0) {
-							use_primary_faction = true;
+						if (cf->assistprimaryfaction == 0) {
+							continue; //Same faction and ignore primary assist
 						}
 					}
 				}
 
-				if (use_primary_faction || sender->GetReverseFactionCon(mob) <= FACTION_AMIABLE) {
+				if (sender->GetReverseFactionCon(mob) <= FACTION_AMIABLE) {
 					//attacking someone on same faction, or a friend
 					//Father Nitwit: make sure we can see them.
 					if (mob->CheckLosFN(sender)) {
@@ -3291,7 +3338,7 @@ void NPC::RecalculateSkills()
 {
   	int r;
 	for (r = 0; r <= EQ::skills::HIGHEST_SKILL; r++) {
-		skills[r] = database.GetSkillCap(GetClass(), (EQ::skills::SkillType)r, level);
+		skills[r] = content_db.GetSkillCap(GetClass(), (EQ::skills::SkillType)r, level);
 	}
 
 	// some overrides -- really we need to be able to set skills for mobs in the DB
@@ -3310,4 +3357,44 @@ void NPC::RecalculateSkills()
 			skills[EQ::skills::SkillDoubleAttack] = level * 5;
 		}
 	}
+}
+
+void NPC::ScaleNPC(uint8 npc_level) {
+	if (GetLevel() != npc_level) {
+		SetLevel(npc_level);
+	}
+	npc_scale_manager->ResetNPCScaling(this);
+	npc_scale_manager->ScaleNPC(this);
+}
+
+bool NPC::IsGuard()
+{
+	switch (GetRace()) {
+	case RT_GUARD:
+		if (GetTexture() == 1 || GetTexture() == 2)
+			return true;
+		break;
+	case RT_IKSAR_2:
+		if (GetTexture() == 1)
+			return true;
+		break;
+	case RT_GUARD_2:
+	case RT_GUARD_3:
+	case RT_GUARD_4:
+	case RT_HUMAN_3:
+	case RT_HALFLING_2:
+	case RT_ERUDITE_2:
+	case RT_BARBARIAN_2:
+	case RT_DARK_ELF_2:
+	case RT_TROLL_2:
+	case OGGOK_CITIZEN:
+	case RT_DWARF_2:
+		return true;
+	default:
+		break;
+	}
+	if (GetPrimaryFaction() == DB_FACTION_GEM_CHOPPERS || GetPrimaryFaction() == DB_FACTION_HERETICS || GetPrimaryFaction() == DB_FACTION_KING_AKANON) { //these 3 factions of guards use player races instead of their own races so we must define them by faction.
+		return true;
+	}
+	return false;
 }

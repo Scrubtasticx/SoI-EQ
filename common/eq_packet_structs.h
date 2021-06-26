@@ -375,13 +375,16 @@ struct NewZone_Struct {
 /*0686*/	uint16	zone_instance;
 /*0688*/	uint32	unknown688;
 /*0692*/	uint8	unknown692[8];
+// Titanium doesn't have a translator, but we can still safely add stuff under here without issues since client memcpy's only what it knows
+// Just wastes some bandwidth sending to tit clients /shrug
 /*0700*/	float	fog_density;
 /*0704*/	uint32	SuspendBuffs;
 /*0708*/	uint32	FastRegenHP;
 /*0712*/	uint32	FastRegenMana;
 /*0716*/	uint32	FastRegenEndurance;
 /*0720*/	uint32	NPCAggroMaxDist;
-/*0724*/
+/*0724*/	uint32	underworld_teleport_index; // > 0 teleports w/ zone point index, invalid succors, if this value is 0, it prevents you from running off edges that would end up underworld
+/*0728*/
 };
 
 /*
@@ -826,7 +829,7 @@ struct LeadershipAA_Struct {
 * Size: 20 Octets
 */
 struct BindStruct {
-	/*000*/ uint32 zoneId;
+	/*000*/ uint32 zone_id;
 	/*004*/ float x;
 	/*008*/ float y;
 	/*012*/ float z;
@@ -1769,7 +1772,7 @@ struct GMZoneRequest_Struct {
 /*0068*/	float	x;
 /*0072*/	float	y;
 /*0076*/	float	z;
-/*0080*/	char	unknown0080[4];
+/*0080*/	float	heading;
 /*0084*/	uint32	success;		// 0 if command failed, 1 if succeeded?
 /*0088*/
 //	/*072*/	int8	success;		// =0 client->server, =1 server->client, -X=specific error
@@ -2128,31 +2131,31 @@ struct AdventureLeaderboard_Struct
 };*/
 
 struct Illusion_Struct { //size: 256 - SoF
-/*000*/	uint32	spawnid;
-/*004*/	char charname[64];		//
-/*068*/	uint16	race;			//
-/*070*/	char	unknown006[2];
-/*072*/	uint8	gender;
-/*073*/	uint8	texture;
-/*074*/	uint8	unknown008;		//
-/*075*/	uint8	unknown009;		//
-/*076*/	uint8	helmtexture;	//
-/*077*/	uint8	unknown010;		//
-/*078*/	uint8	unknown011;		//
-/*079*/	uint8	unknown012;		//
-/*080*/	uint32	face;			//
-/*084*/	uint8	hairstyle;		//
-/*085*/	uint8	haircolor;		//
-/*086*/	uint8	beard;			//
-/*087*/	uint8	beardcolor;		//
-/*088*/	float	size;			//
-/*092*/	uint32	drakkin_heritage;	//
-/*096*/	uint32	drakkin_tattoo;		//
-/*100*/	uint32	drakkin_details;	//
-/*104*/	EQ::TintProfile	armor_tint;	//
-/*140*/	uint8	eyecolor1;		// Field Not Identified in any Illusion Struct
-/*141*/	uint8	eyecolor2;		// Field Not Identified in any Illusion Struct
-/*142*/	uint8	unknown138[114];	//
+/*000*/    uint32          spawnid;
+/*004*/    char            charname[64];        //
+/*068*/    uint16          race;            //
+/*070*/    char            unknown006[2];
+/*072*/    uint8           gender;
+/*073*/    uint8           texture;
+/*074*/    uint8           unknown008;        //
+/*075*/    uint8           unknown009;        //
+/*076*/    uint8           helmtexture;    //
+/*077*/    uint8           unknown010;        //
+/*078*/    uint8           unknown011;        //
+/*079*/    uint8           unknown012;        //
+/*080*/    uint32          face;            //
+/*084*/    uint8           hairstyle;        //
+/*085*/    uint8           haircolor;        //
+/*086*/    uint8           beard;            //
+/*087*/    uint8           beardcolor;        //
+/*088*/    float           size;            //
+/*092*/    uint32          drakkin_heritage;    //
+/*096*/    uint32          drakkin_tattoo;        //
+/*100*/    uint32          drakkin_details;    //
+/*104*/    EQ::TintProfile armor_tint;    //
+/*140*/    uint8           eyecolor1;        // Field Not Identified in any Illusion Struct
+/*141*/    uint8           eyecolor2;        // Field Not Identified in any Illusion Struct
+/*142*/    uint8           unknown138[114];    //
 /*256*/
 };
 
@@ -3244,7 +3247,7 @@ struct TraderClick_Struct{
 };
 
 struct FormattedMessage_Struct{
-	uint32	unknown0;
+	uint32	unknown0; // 1 means from world server
 	uint32	string_id;
 	uint32	type;
 	char	message[0];
@@ -3252,7 +3255,7 @@ struct FormattedMessage_Struct{
 struct SimpleMessage_Struct{
 	uint32	string_id;
 	uint32	color;
-	uint32	unknown8;
+	uint32	unknown8; // 1 means from world server
 };
 
 struct GuildMemberUpdate_Struct {
@@ -4832,17 +4835,99 @@ struct BuffIcon_Struct
 	BuffIconEntry_Struct entries[0];
 };
 
-struct ExpeditionInfo_Struct
+struct ExpeditionInvite_Struct
 {
-/*000*/ uint32 max_players;
-/*004*/ char expedition_name[128];
-/*132*/ char leader_name[64];
+/*000*/ uint32 client_id;            // unique character id
+/*004*/ uint32 unknown004;           // added after titanium
+/*008*/ char   inviter_name[64];
+/*072*/ char   expedition_name[128];
+/*200*/ uint8  swapping;             // 0: adding 1: swapping
+/*201*/ char   swap_name[64];        // if swapping, swap name being removed
+/*265*/ uint8  padding[3];
+/*268*/ uint16 dz_zone_id;           // dz_id zone/instance pair, sent back in reply
+/*270*/ uint16 dz_instance_id;
 };
 
-struct ExpeditionJoinPrompt_Struct
+struct ExpeditionInviteResponse_Struct
 {
-/*000*/ char player_name[64];
-/*064*/ char expedition_name[64];
+/*000*/ uint32 unknown000;
+/*004*/ uint32 unknown004;     // added after titanium
+/*008*/ uint16 dz_zone_id;     // dz_id pair sent in invite
+/*010*/ uint16 dz_instance_id;
+/*012*/ uint8  accepted;       // 0: declined 1: accepted
+/*013*/ uint8  swapping;       // 0: adding 1: swapping (sent in invite)
+/*014*/ char   swap_name[64];  // swap name sent in invite
+/*078*/ uint8  unknown078;     // padding garbage?
+/*079*/ uint8  unknown079;     // padding garbage?
+};
+
+struct DynamicZoneInfo_Struct
+{
+/*000*/ uint32 client_id;
+/*004*/ uint32 unknown004; // added after titanium
+/*008*/ uint32 assigned;   // padded bool, 0: clear info, 1: fill window info
+/*012*/ uint32 max_players;
+/*016*/ char   dz_name[128];
+/*144*/ char   leader_name[64];
+//*208*/ uint32 dz_type; // only in newer clients, if not 1 (expedition type) window does not auto show when dz info assigned
+};
+
+struct DynamicZoneMemberEntry_Struct
+{
+/*000*/ char  name[64];      // variable length, null terminated, max 0x40 (64)
+/*064*/ uint8 online_status; // 0: unknown, 1: Online, 2: Offline, 3: In Dynamic Zone, 4: Link Dead
+};
+
+struct DynamicZoneMemberList_Struct
+{
+/*000*/ uint32 client_id;
+/*004*/ uint32 member_count;
+/*008*/ DynamicZoneMemberEntry_Struct members[0]; // variable length
+};
+
+struct DynamicZoneMemberListName_Struct
+{
+/*000*/ uint32 client_id;
+/*004*/ uint32 unknown004;
+/*008*/ uint32 add_name; // padded bool, 0: remove name, 1: add name with unknown status
+/*012*/ char   name[64];
+};
+
+struct ExpeditionLockoutTimerEntry_Struct
+{
+/*000*/ char   expedition_name[128]; // variable length, null terminated, max 0x80 (128)
+/*000*/ uint32 seconds_remaining;
+/*000*/ int32  event_type;           // seen -1 (0xffffffff) for replay timers and 1 for event timers
+/*000*/ char   event_name[256];      // variable length, null terminated, max 0x100 (256)
+};
+
+struct ExpeditionLockoutTimers_Struct
+{
+/*000*/ uint32 client_id;
+/*004*/ uint32 count;
+/*008*/ ExpeditionLockoutTimerEntry_Struct timers[0];
+};
+
+struct DynamicZoneLeaderName_Struct
+{
+/*000*/ uint32 client_id;
+/*004*/ uint32 unknown004;
+/*008*/ char   leader_name[64];
+};
+
+struct ExpeditionCommand_Struct
+{
+/*000*/ uint32 unknown000;
+/*004*/ uint32 unknown004;
+/*008*/ char name[64];
+};
+
+struct ExpeditionCommandSwap_Struct
+{
+/*000*/ uint32 unknown000;
+/*004*/ uint32 unknown004;
+/*008*/ char add_player_name[64]; // swap to (player must confirm)
+/*072*/ char rem_player_name[64]; // swap from
 };
 
 struct ExpeditionExpireWarning
@@ -4850,48 +4935,67 @@ struct ExpeditionExpireWarning
 /*008*/ uint32 minutes_remaining;
 };
 
-struct ExpeditionCompassEntry_Struct
+struct DynamicZoneCompassEntry_Struct
 {
-/*000*/ uint32 enabled; //guess
-/*004*/ float y;
-/*008*/ float x;
-/*012*/ float z;
+/*000*/ uint16 dz_zone_id;      // target dz id pair
+/*002*/ uint16 dz_instance_id;
+/*004*/ uint32 dz_type;         // 1: Expedition, 2: Tutorial (purple), 3: Task, 4: Mission, 5: Quest (green)
+/*008*/ uint32 unknown008;
+/*012*/ float y;
+/*016*/ float x;
+/*020*/ float z;
 };
 
-struct ExpeditionCompass_Struct
+struct DynamicZoneCompass_Struct
 {
+/*000*/ uint32 client_id;
 /*000*/ uint32 count;
-/*004*/ ExpeditionCompassEntry_Struct entries[0];
+/*004*/ DynamicZoneCompassEntry_Struct entries[0];
 };
 
-struct ExpeditionMemberEntry_Struct
+struct DynamicZoneChooseZoneEntry_Struct
 {
-	char name[64];
-	char status;
+/*000*/ uint16 dz_zone_id;       // dz_id pair
+/*002*/ uint16 dz_instance_id;
+/*004*/ uint32 unknown_id1;      // seen 28 00 00 00 (40), sent back in reply
+/*008*/ uint32 dz_type;          // 1: Expedition, 2: Tutorial, 3: Task, 4: Mission, 5: Quest -- sent back in reply
+/*012*/ uint32 unknown_id2;      // possibly an id based on dz type, for expeditions this was same as dz_id (zone|instance) but task dz was different
+/*016*/ char   description[128]; // variable length, null terminated
+/*144*/ char   leader_name[64];  // variable length, null terminated
 };
 
-struct ExpeditionMemberList_Struct
+struct DynamicZoneChooseZone_Struct
 {
-/*000*/ uint32 count;
-/*004*/ ExpeditionMemberEntry_Struct entries[0];
+/*000*/ uint32 client_id;
+/*004*/ uint32 count;
+/*008*/ DynamicZoneChooseZoneEntry_Struct choices[0];
 };
 
-struct ExpeditionLockoutEntry_Struct
+struct DynamicZoneChooseZoneReply_Struct
 {
-/*000*/ uint32 time_left;
-/*004*/ char expedition[128];
-/*132*/ char expedition_event[128];
+/*000*/ uint32 unknown000;     // ff ff ff ff
+/*004*/ uint32 unknown004;     // seen 69 00 00 00
+/*008*/ uint32 unknown008;     // ff ff ff ff
+/*012*/ uint32 unknown_id1;    // from choose zone entry message
+/*016*/ uint16 dz_zone_id;     // dz_id pair
+/*018*/ uint16 dz_instance_id;
+/*020*/ uint32 dz_type;        // 1: Expedition, 2: Tutorial, 3: Task, 4: Mission, 5: Quest
+/*024*/ uint32 unknown_id2;    // from choose zone entry message
+/*028*/ uint32 unknown028;     // 00 00 00 00
+/*032*/ uint32 unknown032;     // always same as unknown044
+/*036*/ uint32 unknown036;
+/*040*/ uint32 unknown040;
+/*044*/ uint32 unknown044;     // always same as unknown032
+/*048*/ uint32 unknown048;     // seen 01 00 00 00 and 02 00 00 00
 };
 
-struct ExpeditionLockoutList_Struct
+struct KickPlayers_Struct
 {
-/*000*/ uint32 count;
-/*004*/ ExpeditionLockoutEntry_Struct entries[0];
-};
-
-struct ExpeditionLeaderSet_Struct
-{
-/*000*/ char leader_name[64];
+/*000*/ char   char_name[64];
+/*064*/ uint32 unknown064;      // always 0
+/*068*/ uint8  kick_expedition; // true if /kickplayers exp
+/*069*/ uint8  kick_task;       // true if /kickplayers task
+/*070*/ uint8  padding[2];
 };
 
 struct CorpseDrag_Struct

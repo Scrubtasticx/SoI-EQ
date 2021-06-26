@@ -88,6 +88,8 @@ union semun {
 #include "queryserv.h"
 #include "web_interface.h"
 #include "console.h"
+#include "expedition_database.h"
+#include "expedition_state.h"
 
 #include "../common/net/servertalk_server.h"
 #include "../zone/data_bucket.h"
@@ -95,6 +97,7 @@ union semun {
 #include "../common/content/world_content_service.h"
 #include "../common/repositories/merchantlist_temp_repository.h"
 #include "world_store.h"
+#include "world_event_scheduler.h"
 
 WorldStore world_store;
 ClientList client_list;
@@ -105,6 +108,7 @@ UCSConnection UCSLink;
 QueryServConnection QSLink;
 LauncherList launcher_list;
 AdventureManager adventure_manager;
+WorldEventScheduler event_scheduler;
 EQ::Random emu_random;
 volatile bool RunLoops = true;
 uint32 numclients = 0;
@@ -293,11 +297,9 @@ int main(int argc, char** argv) {
 
 	guild_mgr.SetDatabase(&database);
 
-	/**
-	 * Logging
-	 */
-	database.LoadLogSettings(LogSys.log_settings);
-	LogSys.StartFileLogs();
+	LogSys.SetDatabase(&database)
+		->LoadLogDatabaseSettings()
+		->StartFileLogs();
 
 	/**
 	 * Parse simple CLI passes
@@ -423,26 +425,35 @@ int main(int argc, char** argv) {
 
 	adventure_manager.LoadLeaderboardInfo();
 
+	LogInfo("Purging expired expeditions");
+	ExpeditionDatabase::PurgeExpiredExpeditions();
+	ExpeditionDatabase::PurgeExpiredCharacterLockouts();
+
 	LogInfo("Purging expired instances");
 	database.PurgeExpiredInstances();
 
 	Timer PurgeInstanceTimer(450000);
 	PurgeInstanceTimer.Start(450000);
 
+	LogInfo("Loading active expeditions");
+	expedition_state.CacheAllFromDatabase();
+
 	LogInfo("Loading char create info");
 	content_db.LoadCharacterCreateAllocations();
 	content_db.LoadCharacterCreateCombos();
 
+	event_scheduler.SetDatabase(&database)->LoadScheduledEvents();
+
 	std::unique_ptr<EQ::Net::ConsoleServer> console;
 	if (Config->TelnetEnabled) {
 		LogInfo("Console (TCP) listener started");
-		console.reset(new EQ::Net::ConsoleServer(Config->TelnetIP, Config->TelnetTCPPort));
+		console = std::make_unique<EQ::Net::ConsoleServer>(Config->TelnetIP, Config->TelnetTCPPort);
 		RegisterConsoleFunctions(console);
 	}
 
 	zoneserver_list.Init();
 	std::unique_ptr<EQ::Net::ServertalkServer> server_connection;
-	server_connection.reset(new EQ::Net::ServertalkServer());
+	server_connection = std::make_unique<EQ::Net::ServertalkServer>();
 
 	EQ::Net::ServertalkServerOptions server_opts;
 	server_opts.port = Config->WorldTCPPort;
@@ -594,11 +605,14 @@ int main(int argc, char** argv) {
 			}
 		}
 
+		event_scheduler.Process(&zoneserver_list);
+
 		client_list.Process();
 
 		if (PurgeInstanceTimer.Check()) {
 			database.PurgeExpiredInstances();
 			database.PurgeAllDeletedDataBuckets();
+			ExpeditionDatabase::PurgeExpiredCharacterLockouts();
 		}
 
 		if (EQTimeTimer.Check()) {
@@ -614,6 +628,7 @@ int main(int argc, char** argv) {
 		launcher_list.Process();
 		LFPGroupList.Process();
 		adventure_manager.Process();
+		expedition_state.Process();
 
 		if (InterserverTimer.Check()) {
 			InterserverTimer.Start();

@@ -36,6 +36,8 @@
 #include "pathfinder_interface.h"
 #include "global_loot_manager.h"
 
+class DynamicZone;
+
 struct ZonePoint {
 	float  x;
 	float  y;
@@ -81,6 +83,7 @@ struct item_tick_struct {
 };
 
 class Client;
+class Expedition;
 class Map;
 class Mob;
 class WaterMap;
@@ -129,6 +132,7 @@ public:
 	bool IsPVPZone() { return pvpzone; }
 	bool IsSpellBlocked(uint32 spell_id, const glm::vec3 &location);
 	bool IsUCSServerAvailable() { return m_ucss_available; }
+	bool IsZone(uint32 zone_id, uint16 instance_id) const;
 	bool LoadGroundSpawns();
 	bool LoadZoneCFG(const char *filename, uint16 instance_id);
 	bool LoadZoneObjects();
@@ -163,7 +167,7 @@ public:
 	inline const uint32 &graveyard_zoneid() { return pgraveyard_zoneid; }
 	inline const uint32 GetInstanceID() const { return instanceid; }
 	inline const uint32 GetZoneID() const { return zoneid; }
-	inline glm::vec3 GetSafePoint() { return m_SafePoint; }
+	inline glm::vec4 GetSafePoint() { return m_SafePoint; }
 	inline glm::vec4 GetGraveyardPoint() { return m_Graveyard; }
 	inline std::vector<int> GetGlobalLootTables(NPC *mob) const { return m_global_loot.GetGlobalLootTables(mob); }
 	inline Timer *GetInstanceTimer() { return Instance_Timer; }
@@ -175,6 +179,7 @@ public:
 	void DumpMerchantList(uint32 npcid);
 	int SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charges, bool sold = false);
 	int32 MobsAggroCount() { return aggroedmobs; }
+	DynamicZone* GetDynamicZone();
 
 	IPathfinder                                   *pathing;
 	LinkedList<NPC_Emote_Struct *>                NPCEmoteList;
@@ -216,6 +221,8 @@ public:
 
 	std::vector<GridRepository::Grid>             zone_grids;
 	std::vector<GridEntriesRepository::GridEntry> zone_grid_entries;
+
+	std::unordered_map<uint32, std::unique_ptr<Expedition>> expedition_cache;
 
 	time_t weather_timer;
 	Timer  spawn2_timer;
@@ -282,7 +289,6 @@ public:
 	void SpawnConditionChanged(const SpawnCondition &c, int16 old_value);
 	void SpawnStatus(Mob *client);
 	void StartShutdownTimer(uint32 set_time = (RuleI(Zone, AutoShutdownDelay)));
-	void UpdateHotzone();
 	void UpdateQGlobal(uint32 qid, QGlobal newGlobal);
 	void weatherSend(Client *client = nullptr);
 
@@ -349,6 +355,7 @@ public:
 	 */
 	void mod_init();
 	void mod_repop();
+	void SetIsHotzone(bool is_hotzone);
 
 private:
 	bool      allow_mercs;
@@ -369,7 +376,7 @@ private:
 	char      *map_name;
 	char      *short_name;
 	char      file_name[16];
-	glm::vec3 m_SafePoint;
+	glm::vec4 m_SafePoint;
 	glm::vec4 m_Graveyard;
 	int       default_ruleset;
 	int       zone_total_blocked_spells;
@@ -394,7 +401,6 @@ private:
 	Timer                               *Weather_Timer;
 	Timer                               autoshutdown_timer;
 	Timer                               clientauth_timer;
-	Timer                               hotzone_timer;
 	Timer                               initgrids_timer;
 	Timer                               qglobal_purge_timer;
 	ZoneSpellsBlocked                   *blocked_spells;
@@ -402,4 +408,3 @@ private:
 };
 
 #endif
-

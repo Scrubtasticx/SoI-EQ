@@ -204,7 +204,7 @@ void Client::ProcessItemCaps()
 	// The Sleeper Tomb Avatar proc counts towards item ATK
 	// The client uses a 100 here, so using a 100 here the client and server will agree
 	// For example, if you set the effect to be 200 it will get 100 item ATK and 100 spell ATK
-	if (IsValidSpell(2434) && FindBuff(2434)) {
+	if (IsValidSpell(SPELL_AVATAR_ST_PROC) && FindBuff(SPELL_AVATAR_ST_PROC)) {
 		itembonuses.ATK += 100;
 		spellbonuses.ATK -= 100;
 	}
@@ -3382,10 +3382,10 @@ bool Client::CalcItemScale(uint32 slot_x, uint32 slot_y) {
 		if (Trader)
 			if (i >= EQ::invbag::GENERAL_BAGS_BEGIN && i <= EQ::invbag::GENERAL_BAGS_END) {
 				EQ::ItemInstance* parent_item = m_inv.GetItem(EQ::InventoryProfile::CalcSlotId(i));
-				if (parent_item && parent_item->GetItem()->ID == 17899) // trader satchel
+				if (parent_item && parent_item->GetItem()->BagType == EQ::item::BagTypeTradersSatchel)
 					continue;
 			}
-
+		
 		bool update_slot = false;
 		if(inst->IsScaling())
 		{
@@ -3468,7 +3468,7 @@ bool Client::DoItemEnterZone(uint32 slot_x, uint32 slot_y) {
 		if (Trader)
 			if (i >= EQ::invbag::GENERAL_BAGS_BEGIN && i <= EQ::invbag::GENERAL_BAGS_END) {
 				EQ::ItemInstance* parent_item = m_inv.GetItem(EQ::InventoryProfile::CalcSlotId(i));
-				if (parent_item && parent_item->GetItem()->ID == 17899) // trader satchel
+				if (parent_item && parent_item->GetItem()->BagType == EQ::item::BagTypeTradersSatchel)
 					continue;
 			}
 

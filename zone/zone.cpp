@@ -37,6 +37,7 @@
 #include "../common/string_util.h"
 #include "../common/eqemu_logsys.h"
 
+#include "expedition.h"
 #include "guild_mgr.h"
 #include "map.h"
 #include "npc.h"
@@ -274,7 +275,9 @@ bool Zone::LoadZoneObjects()
 		position.y = data.y;
 		position.z = data.z;
 
-		data.z = zone->zonemap->FindBestZ(position, nullptr);
+		if (zone->HasMap()) {
+			data.z = zone->zonemap->FindBestZ(position, nullptr);
+		}
 
 		EQ::ItemInstance *inst = nullptr;
 		// FatherNitwit: this dosent seem to work...
@@ -416,12 +419,11 @@ int Zone::SaveTempItem(uint32 merchantid, uint32 npcid, uint32 item, int32 charg
 				if (!ml.origslot) {
 					ml.origslot = ml.slot;
 				}
-
-				if (charges > 0) {
+				bool is_stackable = database.GetItem(item)->Stackable;
+				if ((is_stackable && charges > 0) || (!is_stackable && sold)) {
 					database.SaveMerchantTemp(npcid, ml.origslot, item, ml.charges);
 					tmp_merlist.push_back(ml);
-				}
-				else {
+				} else {
 					database.DeleteMerchantTemp(npcid, ml.origslot);
 				}
 			}
@@ -938,8 +940,7 @@ Zone::Zone(uint32 in_zoneid, uint32 in_instanceid, const char* in_short_name)
 	spawn2_timer(1000),
 	hot_reload_timer(1000),
 	qglobal_purge_timer(30000),
-	hotzone_timer(120000),
-	m_SafePoint(0.0f,0.0f,0.0f),
+	m_SafePoint(0.0f,0.0f,0.0f,0.0f),
 	m_Graveyard(0.0f,0.0f,0.0f,0.0f)
 {
 	zoneid = in_zoneid;
@@ -961,7 +962,7 @@ Zone::Zone(uint32 in_zoneid, uint32 in_instanceid, const char* in_short_name)
 	lootvar = 0;
 
 	if(RuleB(TaskSystem, EnableTaskSystem)) {
-		taskmanager->LoadProximities(zoneid);
+		task_manager->LoadProximities(zoneid);
 	}
 
 	short_name = strcpy(new char[strlen(in_short_name)+1], in_short_name);
@@ -1182,6 +1183,9 @@ bool Zone::Init(bool iStaticZone) {
 
 	petition_list.ClearPetitions();
 	petition_list.ReadDatabase();
+
+	LogInfo("Loading active Expeditions");
+	Expedition::CacheAllFromDatabase();
 
 	LogInfo("Loading timezone data");
 	zone->zone_time.setEQTimeZone(content_db.GetZoneTZ(zoneid, GetInstanceVersion()));
@@ -1487,7 +1491,17 @@ bool Zone::Process() {
 		{
 			if(Instance_Timer->Check())
 			{
-				entity_list.GateAllClients();
+				// if this is a dynamic zone instance notify system associated with it
+				auto expedition = Expedition::FindCachedExpeditionByZoneInstance(GetZoneID(), GetInstanceID());
+				if (expedition)
+				{
+					expedition->RemoveAllMembers(false); // entity list will teleport clients out immediately
+				}
+
+				// instance shutting down, move corpses to graveyard or non-instanced zone at same coords
+				entity_list.MovePlayerCorpsesToGraveyard(true);
+
+				entity_list.GateAllClientsToSafeReturn();
 				database.DeleteInstance(GetInstanceID());
 				Instance_Shutdown_Timer = new Timer(20000); //20 seconds
 			}
@@ -1497,20 +1511,29 @@ bool Zone::Process() {
 				if(Instance_Warning_timer == nullptr)
 				{
 					uint32 rem_time = Instance_Timer->GetRemainingTime();
+					uint32_t minutes_warning = 0;
 					if(rem_time < 60000 && rem_time > 55000)
 					{
-						entity_list.ExpeditionWarning(1);
-						Instance_Warning_timer = new Timer(10000);
+						minutes_warning = 1;
 					}
 					else if(rem_time < 300000 && rem_time > 295000)
 					{
-						entity_list.ExpeditionWarning(5);
-						Instance_Warning_timer = new Timer(10000);
+						minutes_warning = 5;
 					}
 					else if(rem_time < 900000 && rem_time > 895000)
 					{
-						entity_list.ExpeditionWarning(15);
-						Instance_Warning_timer = new Timer(10000);
+						minutes_warning = 15;
+					}
+
+					if (minutes_warning > 0)
+					{
+						// expedition expire warnings are handled by world
+						auto expedition = Expedition::FindCachedExpeditionByZoneInstance(GetZoneID(), GetInstanceID());
+						if (!expedition)
+						{
+							entity_list.ExpeditionWarning(minutes_warning);
+							Instance_Warning_timer = new Timer(10000);
+						}
 					}
 				}
 				else if(Instance_Warning_timer->Check())
@@ -1556,8 +1579,6 @@ bool Zone::Process() {
 			}
 		}
 	}
-
-	if(hotzone_timer.Check()) { UpdateHotzone(); }
 
 	mMovementManager->Process();
 
@@ -1954,7 +1975,7 @@ bool ZoneDatabase::LoadStaticZonePoints(LinkedList<ZonePoint *> *zone_point_list
 	zone->numzonepoints = 0;
 	zone->virtual_zone_point_list.clear();
 
-	auto zone_points = ZonePointsRepository::GetWhere(
+	auto zone_points = ZonePointsRepository::GetWhere(content_db,
 		fmt::format(
 			"zone = '{}' AND (version = {} OR version = -1) {} ORDER BY number",
 			zonename,
@@ -2577,19 +2598,9 @@ uint32 Zone::GetSpawnKillCount(uint32 in_spawnid) {
 	return 0;
 }
 
-void Zone::UpdateHotzone()
+void Zone::SetIsHotzone(bool is_hotzone)
 {
-    std::string query = StringFormat("SELECT hotzone FROM zone WHERE short_name = '%s'", GetShortName());
-    auto results = content_db.QueryDatabase(query);
-    if (!results.Success())
-        return;
-
-    if (results.RowCount() == 0)
-        return;
-
-    auto row = results.begin();
-
-    is_hotzone = atoi(row[0]) == 0 ? false: true;
+	Zone::is_hotzone = is_hotzone;
 }
 
 void Zone::RequestUCSServerStatus() {
@@ -2699,3 +2710,25 @@ void Zone::SetInstanceTimeRemaining(uint32 instance_time_remaining)
 	Zone::instance_time_remaining = instance_time_remaining;
 }
 
+bool Zone::IsZone(uint32 zone_id, uint16 instance_id) const
+{
+	return (zoneid == zone_id && instanceid == instance_id);
+}
+
+DynamicZone* Zone::GetDynamicZone()
+{
+	if (GetInstanceID() == 0)
+	{
+		return nullptr;
+	}
+
+	auto expedition = Expedition::FindCachedExpeditionByZoneInstance(GetZoneID(), GetInstanceID());
+	if (expedition)
+	{
+		return &expedition->GetDynamicZone();
+	}
+
+	// todo: tasks, missions, and quests with an associated dz for this instance id
+
+	return nullptr;
+}

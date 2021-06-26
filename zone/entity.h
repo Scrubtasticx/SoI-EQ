@@ -49,6 +49,7 @@ class Raid;
 class Spawn2;
 class Trap;
 
+struct DynamicZoneSafeReturn;
 struct GuildBankItemUpdate_Struct;
 struct NewSpawn_Struct;
 struct QGlobal;
@@ -233,6 +234,7 @@ public:
 	void RemoveAllCorpsesByCharID(uint32 charid);
 	void RemoveCorpseByDBID(uint32 dbid);
 	int RezzAllCorpsesByCharID(uint32 charid);
+	void DespawnGridNodes(int32 grid_id);
 	bool IsMobInZone(Mob *who);
 	void ClearClientPetitionQueue();
 	bool CanAddHateForMob(Mob *p);
@@ -481,7 +483,7 @@ public:
 	void	SendGroupJoin(uint32 gid, const char *name);
 
 	void	SaveAllClientsTaskState();
-	void	ReloadAllClientsTaskState(int TaskID=0);
+	void	ReloadAllClientsTaskState(int task_id=0);
 	uint16	CreateGroundObject(uint32 itemid, const glm::vec4& position, uint32 decay_time = 300000);
 	uint16	CreateGroundObjectFromModel(const char *model, const glm::vec4& position, uint8 type = 0x00, uint32 decay_time = 0);
 	uint16	CreateDoor(const char *model, const glm::vec4& position, uint8 type = 0, uint16 size = 100);
@@ -495,6 +497,8 @@ public:
 	void	SendFindableNPCList(Client *c);
 	void	UpdateFindableNPCState(NPC *n, bool Remove);
 	void	HideCorpses(Client *c, uint8 CurrentMode, uint8 NewMode);
+
+	void GateAllClientsToSafeReturn();
 
 	uint16 GetClientCount();
 	void GetMobList(std::list<Mob*> &m_list);
@@ -511,6 +515,9 @@ public:
 	inline const std::unordered_map<uint16, NPC *> &GetNPCList() { return npc_list; }
 	inline const std::unordered_map<uint16, Merc *> &GetMercList() { return merc_list; }
 	inline const std::unordered_map<uint16, Client *> &GetClientList() { return client_list; }
+#ifdef BOTS
+	inline const std::list<Bot *> &GetBotList() { return bot_list; }
+#endif
 	inline const std::unordered_map<uint16, Corpse *> &GetCorpseList() { return corpse_list; }
 	inline const std::unordered_map<uint16, Object *> &GetObjectList() { return object_list; }
 	inline const std::unordered_map<uint16, Doors *> &GetDoorsList() { return door_list; }
@@ -533,6 +540,8 @@ public:
 	bool IsTrapGroupSpawned(uint32 trap_id, uint8 group);
 	void UpdateAllTraps(bool respawn, bool repopnow = false);
 	void ClearTrapPointers();
+
+	int MovePlayerCorpsesToGraveyard(bool force_move_from_instance = false);
 
 protected:
 	friend class Zone;
@@ -588,6 +597,8 @@ private:
 		void ShowSpawnWindow(Client* client, int Distance, bool NamedOnly); // TODO: Implement ShowSpawnWindow in the bot class but it needs entity list stuff
 
 		void ScanCloseClientMobs(std::unordered_map<uint16, Mob*>& close_mobs, Mob* scanning_mob);
+
+		void GetBotList(std::list<Bot*> &b_list);
 	private:
 		std::list<Bot*> bot_list;
 #endif

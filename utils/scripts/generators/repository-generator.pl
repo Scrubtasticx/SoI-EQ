@@ -33,8 +33,9 @@ my $repository_generation_option = $ARGV[2] ? $ARGV[2] : "all";
 #############################################
 # world path
 #############################################
-my $world_path       = $server_path . "/world";
-my $world_path_bin   = $server_path . "/bin/world";
+my $world_binary     = ($^O eq "MSWin32") ? "world.exe" : "world";
+my $world_path       = $server_path . "/" . $world_binary;
+my $world_path_bin   = $server_path . "/bin/" . $world_binary;
 my $found_world_path = "";
 
 if (-e $world_path) {
@@ -81,7 +82,8 @@ my $database_name = $config->{"server"}{"database"}{"db"};
 my $host          = $config->{"server"}{"database"}{"host"};
 my $user          = $config->{"server"}{"database"}{"username"};
 my $pass          = $config->{"server"}{"database"}{"password"};
-my $dsn           = "dbi:mysql:$database_name:$host:3306";
+my $port          = $config->{"server"}{"database"}{"port"};
+my $dsn           = "dbi:mysql:$database_name:$host:$port";
 my $connect       = DBI->connect($dsn, $user, $pass);
 
 my @tables = ();
@@ -237,7 +239,7 @@ foreach my $table_to_generate (@tables) {
         elsif ($column_default eq "''") {
             $default_value = '""';
         }
-        elsif ((trim($column_default) eq "" || $column_default eq "NULL") && $column_type =~ /text|varchar/i) {
+        elsif ((trim($column_default) eq "" || $column_default eq "NULL") && $column_type =~ /text|varchar|datetime/i) {
             $default_value = '""';
         }
 
@@ -266,16 +268,14 @@ foreach my $table_to_generate (@tables) {
             );
         }
 
-        # insert one
-        if ($extra ne "auto_increment") {
-            my $value = sprintf("\"'\" + EscapeString(%s_entry.%s) + \"'\"", $table_name, $column_name);
-            if ($data_type =~ /int|float|double|decimal/) {
-                $value = sprintf('std::to_string(%s_entry.%s)', $table_name, $column_name);
-            }
-
-            $insert_one_entries  .= sprintf("\t\tinsert_values.push_back(%s);\n", $value);
-            $insert_many_entries .= sprintf("\t\t\tinsert_values.push_back(%s);\n", $value);
+        # insert
+        my $value = sprintf("\"'\" + EscapeString(%s_entry.%s) + \"'\"", $table_name, $column_name);
+        if ($data_type =~ /int|float|double|decimal/) {
+            $value = sprintf('std::to_string(%s_entry.%s)', $table_name, $column_name);
         }
+
+        $insert_one_entries  .= sprintf("\t\tinsert_values.push_back(%s);\n", $value);
+        $insert_many_entries .= sprintf("\t\t\tinsert_values.push_back(%s);\n", $value);
 
         # find one / all (select)
         if ($data_type =~ /int/) {

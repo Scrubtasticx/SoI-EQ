@@ -1,29 +1,12 @@
 /**
- * EQEmulator: Everquest Server Emulator
- * Copyright (C) 2001-2020 EQEmulator Development Team (https://github.com/EQEmu/Server)
+ * DO NOT MODIFY THIS FILE
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY except by those people which sell it, which
- * are required to give you total support for your newly bought product;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR
- * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
- *
- */
-
-/**
  * This repository was automatically generated and is NOT to be modified directly.
- * Any repository modifications are meant to be made to
- * the repository extending the base. Any modifications to base repositories are to
- * be made by the generator only
+ * Any repository modifications are meant to be made to the repository extending the base.
+ * Any modifications to base repositories are to be made by the generator only
+ *
+ * @generator ./utils/scripts/generators/repository-generator.pl
+ * @docs https://eqemu.gitbook.io/server/in-development/developer-area/repositories
  */
 
 #ifndef EQEMU_BASE_NPC_TYPES_REPOSITORY_H
@@ -40,7 +23,7 @@ public:
 		std::string lastname;
 		int         level;
 		int         race;
-		int         class;
+		int         class_;
 		int         bodytype;
 		int         hp;
 		int         mana;
@@ -157,6 +140,7 @@ public:
 		int         model;
 		int         flymode;
 		int         always_aggro;
+		int         exp_mod;
 	};
 
 	static std::string PrimaryKey()
@@ -172,7 +156,7 @@ public:
 			"lastname",
 			"level",
 			"race",
-			"class",
+			"`class`",
 			"bodytype",
 			"hp",
 			"mana",
@@ -289,27 +273,13 @@ public:
 			"model",
 			"flymode",
 			"always_aggro",
+			"exp_mod",
 		};
 	}
 
 	static std::string ColumnsRaw()
 	{
 		return std::string(implode(", ", Columns()));
-	}
-
-	static std::string InsertColumnsRaw()
-	{
-		std::vector<std::string> insert_columns;
-
-		for (auto &column : Columns()) {
-			if (column == PrimaryKey()) {
-				continue;
-			}
-
-			insert_columns.push_back(column);
-		}
-
-		return std::string(implode(", ", insert_columns));
 	}
 
 	static std::string TableName()
@@ -331,7 +301,7 @@ public:
 		return fmt::format(
 			"INSERT INTO {} ({}) ",
 			TableName(),
-			InsertColumnsRaw()
+			ColumnsRaw()
 		);
 	}
 
@@ -344,7 +314,7 @@ public:
 		entry.lastname               = "";
 		entry.level                  = 0;
 		entry.race                   = 0;
-		entry.class                  = 0;
+		entry.class_                 = 0;
 		entry.bodytype               = 1;
 		entry.hp                     = 0;
 		entry.mana                   = 0;
@@ -461,6 +431,7 @@ public:
 		entry.model                  = 0;
 		entry.flymode                = -1;
 		entry.always_aggro           = 0;
+		entry.exp_mod                = 100;
 
 		return entry;
 	}
@@ -480,10 +451,11 @@ public:
 	}
 
 	static NpcTypes FindOne(
+		Database& db,
 		int npc_types_id
 	)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} WHERE id = {} LIMIT 1",
 				BaseSelect(),
@@ -500,7 +472,7 @@ public:
 			entry.lastname               = row[2] ? row[2] : "";
 			entry.level                  = atoi(row[3]);
 			entry.race                   = atoi(row[4]);
-			entry.class                  = atoi(row[5]);
+			entry.class_                 = atoi(row[5]);
 			entry.bodytype               = atoi(row[6]);
 			entry.hp                     = atoi(row[7]);
 			entry.mana                   = atoi(row[8]);
@@ -617,6 +589,7 @@ public:
 			entry.model                  = atoi(row[119]);
 			entry.flymode                = atoi(row[120]);
 			entry.always_aggro           = atoi(row[121]);
+			entry.exp_mod                = atoi(row[122]);
 
 			return entry;
 		}
@@ -625,10 +598,11 @@ public:
 	}
 
 	static int DeleteOne(
+		Database& db,
 		int npc_types_id
 	)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"DELETE FROM {} WHERE {} = {}",
 				TableName(),
@@ -641,6 +615,7 @@ public:
 	}
 
 	static int UpdateOne(
+		Database& db,
 		NpcTypes npc_types_entry
 	)
 	{
@@ -652,7 +627,7 @@ public:
 		update_values.push_back(columns[2] + " = '" + EscapeString(npc_types_entry.lastname) + "'");
 		update_values.push_back(columns[3] + " = " + std::to_string(npc_types_entry.level));
 		update_values.push_back(columns[4] + " = " + std::to_string(npc_types_entry.race));
-		update_values.push_back(columns[5] + " = " + std::to_string(npc_types_entry.class));
+		update_values.push_back(columns[5] + " = " + std::to_string(npc_types_entry.class_));
 		update_values.push_back(columns[6] + " = " + std::to_string(npc_types_entry.bodytype));
 		update_values.push_back(columns[7] + " = " + std::to_string(npc_types_entry.hp));
 		update_values.push_back(columns[8] + " = " + std::to_string(npc_types_entry.mana));
@@ -769,8 +744,9 @@ public:
 		update_values.push_back(columns[119] + " = " + std::to_string(npc_types_entry.model));
 		update_values.push_back(columns[120] + " = " + std::to_string(npc_types_entry.flymode));
 		update_values.push_back(columns[121] + " = " + std::to_string(npc_types_entry.always_aggro));
+		update_values.push_back(columns[122] + " = " + std::to_string(npc_types_entry.exp_mod));
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"UPDATE {} SET {} WHERE {} = {}",
 				TableName(),
@@ -784,16 +760,18 @@ public:
 	}
 
 	static NpcTypes InsertOne(
+		Database& db,
 		NpcTypes npc_types_entry
 	)
 	{
 		std::vector<std::string> insert_values;
 
+		insert_values.push_back(std::to_string(npc_types_entry.id));
 		insert_values.push_back("'" + EscapeString(npc_types_entry.name) + "'");
 		insert_values.push_back("'" + EscapeString(npc_types_entry.lastname) + "'");
 		insert_values.push_back(std::to_string(npc_types_entry.level));
 		insert_values.push_back(std::to_string(npc_types_entry.race));
-		insert_values.push_back(std::to_string(npc_types_entry.class));
+		insert_values.push_back(std::to_string(npc_types_entry.class_));
 		insert_values.push_back(std::to_string(npc_types_entry.bodytype));
 		insert_values.push_back(std::to_string(npc_types_entry.hp));
 		insert_values.push_back(std::to_string(npc_types_entry.mana));
@@ -910,8 +888,9 @@ public:
 		insert_values.push_back(std::to_string(npc_types_entry.model));
 		insert_values.push_back(std::to_string(npc_types_entry.flymode));
 		insert_values.push_back(std::to_string(npc_types_entry.always_aggro));
+		insert_values.push_back(std::to_string(npc_types_entry.exp_mod));
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} VALUES ({})",
 				BaseInsert(),
@@ -930,6 +909,7 @@ public:
 	}
 
 	static int InsertMany(
+		Database& db,
 		std::vector<NpcTypes> npc_types_entries
 	)
 	{
@@ -938,11 +918,12 @@ public:
 		for (auto &npc_types_entry: npc_types_entries) {
 			std::vector<std::string> insert_values;
 
+			insert_values.push_back(std::to_string(npc_types_entry.id));
 			insert_values.push_back("'" + EscapeString(npc_types_entry.name) + "'");
 			insert_values.push_back("'" + EscapeString(npc_types_entry.lastname) + "'");
 			insert_values.push_back(std::to_string(npc_types_entry.level));
 			insert_values.push_back(std::to_string(npc_types_entry.race));
-			insert_values.push_back(std::to_string(npc_types_entry.class));
+			insert_values.push_back(std::to_string(npc_types_entry.class_));
 			insert_values.push_back(std::to_string(npc_types_entry.bodytype));
 			insert_values.push_back(std::to_string(npc_types_entry.hp));
 			insert_values.push_back(std::to_string(npc_types_entry.mana));
@@ -1059,13 +1040,14 @@ public:
 			insert_values.push_back(std::to_string(npc_types_entry.model));
 			insert_values.push_back(std::to_string(npc_types_entry.flymode));
 			insert_values.push_back(std::to_string(npc_types_entry.always_aggro));
+			insert_values.push_back(std::to_string(npc_types_entry.exp_mod));
 
 			insert_chunks.push_back("(" + implode(",", insert_values) + ")");
 		}
 
 		std::vector<std::string> insert_values;
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} VALUES {}",
 				BaseInsert(),
@@ -1076,11 +1058,11 @@ public:
 		return (results.Success() ? results.RowsAffected() : 0);
 	}
 
-	static std::vector<NpcTypes> All()
+	static std::vector<NpcTypes> All(Database& db)
 	{
 		std::vector<NpcTypes> all_entries;
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{}",
 				BaseSelect()
@@ -1097,7 +1079,7 @@ public:
 			entry.lastname               = row[2] ? row[2] : "";
 			entry.level                  = atoi(row[3]);
 			entry.race                   = atoi(row[4]);
-			entry.class                  = atoi(row[5]);
+			entry.class_                 = atoi(row[5]);
 			entry.bodytype               = atoi(row[6]);
 			entry.hp                     = atoi(row[7]);
 			entry.mana                   = atoi(row[8]);
@@ -1214,6 +1196,7 @@ public:
 			entry.model                  = atoi(row[119]);
 			entry.flymode                = atoi(row[120]);
 			entry.always_aggro           = atoi(row[121]);
+			entry.exp_mod                = atoi(row[122]);
 
 			all_entries.push_back(entry);
 		}
@@ -1221,11 +1204,11 @@ public:
 		return all_entries;
 	}
 
-	static std::vector<NpcTypes> GetWhere(std::string where_filter)
+	static std::vector<NpcTypes> GetWhere(Database& db, std::string where_filter)
 	{
 		std::vector<NpcTypes> all_entries;
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} WHERE {}",
 				BaseSelect(),
@@ -1243,7 +1226,7 @@ public:
 			entry.lastname               = row[2] ? row[2] : "";
 			entry.level                  = atoi(row[3]);
 			entry.race                   = atoi(row[4]);
-			entry.class                  = atoi(row[5]);
+			entry.class_                 = atoi(row[5]);
 			entry.bodytype               = atoi(row[6]);
 			entry.hp                     = atoi(row[7]);
 			entry.mana                   = atoi(row[8]);
@@ -1360,6 +1343,7 @@ public:
 			entry.model                  = atoi(row[119]);
 			entry.flymode                = atoi(row[120]);
 			entry.always_aggro           = atoi(row[121]);
+			entry.exp_mod                = atoi(row[122]);
 
 			all_entries.push_back(entry);
 		}
@@ -1367,9 +1351,9 @@ public:
 		return all_entries;
 	}
 
-	static int DeleteWhere(std::string where_filter)
+	static int DeleteWhere(Database& db, std::string where_filter)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"DELETE FROM {} WHERE {}",
 				TableName(),
@@ -1380,9 +1364,9 @@ public:
 		return (results.Success() ? results.RowsAffected() : 0);
 	}
 
-	static int Truncate()
+	static int Truncate(Database& db)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"TRUNCATE TABLE {}",
 				TableName()

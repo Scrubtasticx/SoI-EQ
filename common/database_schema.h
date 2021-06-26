@@ -50,6 +50,8 @@ namespace DatabaseSchema {
 			{"character_data",                 "id"},
 			{"character_disciplines",          "id"},
 			{"character_enabledtasks",         "charid"},
+			{"character_expedition_lockouts",  "character_id"},
+			{"character_exp_modifiers",        "character_id"},
 			{"character_inspect_messages",     "id"},
 			{"character_item_recast",          "id"},
 			{"character_languages",            "id"},
@@ -114,6 +116,8 @@ namespace DatabaseSchema {
 			"character_data",
 			"character_disciplines",
 			"character_enabledtasks",
+			"character_expedition_lockouts",
+			"character_exp_modifiers",
 			"character_inspect_messages",
 			"character_item_recast",
 			"character_languages",
@@ -213,6 +217,7 @@ namespace DatabaseSchema {
 			"npc_types_tint",
 			"object",
 			"pets",
+			"pets_beastlord_data",
 			"pets_equipmentset",
 			"pets_equipmentset_entries",
 			"proximities",
@@ -305,7 +310,11 @@ namespace DatabaseSchema {
 			"banned_ips",
 			"bug_reports",
 			"bugs",
+			"dynamic_zone_members",
+			"dynamic_zones",
 			"eventlog",
+			"expedition_lockouts",
+			"expeditions",
 			"gm_ips",
 			"group_id",
 			"group_leaders",
@@ -322,7 +331,7 @@ namespace DatabaseSchema {
 			"reports",
 			"respawn_times",
 			"saylink",
-
+			"server_scheduled_events",
 		};
 	}
 

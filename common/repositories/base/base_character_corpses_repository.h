@@ -1,29 +1,12 @@
 /**
- * EQEmulator: Everquest Server Emulator
- * Copyright (C) 2001-2020 EQEmulator Development Team (https://github.com/EQEmu/Server)
+ * DO NOT MODIFY THIS FILE
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY except by those people which sell it, which
- * are required to give you total support for your newly bought product;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR
- * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
- *
- */
-
-/**
  * This repository was automatically generated and is NOT to be modified directly.
- * Any repository modifications are meant to be made to
- * the repository extending the base. Any modifications to base repositories are to
- * be made by the generator only
+ * Any repository modifications are meant to be made to the repository extending the base.
+ * Any modifications to base repositories are to be made by the generator only
+ *
+ * @generator ./utils/scripts/generators/repository-generator.pl
+ * @docs https://eqemu.gitbook.io/server/in-development/developer-area/repositories
  */
 
 #ifndef EQEMU_BASE_CHARACTER_CORPSES_REPOSITORY_H
@@ -55,7 +38,7 @@ public:
 		int         level;
 		int         race;
 		int         gender;
-		int         class;
+		int         class_;
 		int         deity;
 		int         texture;
 		int         helm_texture;
@@ -112,7 +95,7 @@ public:
 			"level",
 			"race",
 			"gender",
-			"class",
+			"`class`",
 			"deity",
 			"texture",
 			"helm_texture",
@@ -147,21 +130,6 @@ public:
 		return std::string(implode(", ", Columns()));
 	}
 
-	static std::string InsertColumnsRaw()
-	{
-		std::vector<std::string> insert_columns;
-
-		for (auto &column : Columns()) {
-			if (column == PrimaryKey()) {
-				continue;
-			}
-
-			insert_columns.push_back(column);
-		}
-
-		return std::string(implode(", ", insert_columns));
-	}
-
 	static std::string TableName()
 	{
 		return std::string("character_corpses");
@@ -181,7 +149,7 @@ public:
 		return fmt::format(
 			"INSERT INTO {} ({}) ",
 			TableName(),
-			InsertColumnsRaw()
+			ColumnsRaw()
 		);
 	}
 
@@ -209,7 +177,7 @@ public:
 		entry.level            = 0;
 		entry.race             = 0;
 		entry.gender           = 0;
-		entry.class            = 0;
+		entry.class_           = 0;
 		entry.deity            = 0;
 		entry.texture          = 0;
 		entry.helm_texture     = 0;
@@ -255,10 +223,11 @@ public:
 	}
 
 	static CharacterCorpses FindOne(
+		Database& db,
 		int character_corpses_id
 	)
 	{
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} WHERE id = {} LIMIT 1",
 				BaseSelect(),
@@ -290,7 +259,7 @@ public:
 			entry.level            = atoi(row[17]);
 			entry.race             = atoi(row[18]);
 			entry.gender           = atoi(row[19]);
-			entry.class            = atoi(row[20]);
+			entry.class_           = atoi(row[20]);
 			entry.deity            = atoi(row[21]);
 			entry.texture          = atoi(row[22]);
 			entry.helm_texture     = atoi(row[23]);
@@ -325,10 +294,11 @@ public:
 	}
 
 	static int DeleteOne(
+		Database& db,
 		int character_corpses_id
 	)
 	{
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"DELETE FROM {} WHERE {} = {}",
 				TableName(),
@@ -341,6 +311,7 @@ public:
 	}
 
 	static int UpdateOne(
+		Database& db,
 		CharacterCorpses character_corpses_entry
 	)
 	{
@@ -367,7 +338,7 @@ public:
 		update_values.push_back(columns[17] + " = " + std::to_string(character_corpses_entry.level));
 		update_values.push_back(columns[18] + " = " + std::to_string(character_corpses_entry.race));
 		update_values.push_back(columns[19] + " = " + std::to_string(character_corpses_entry.gender));
-		update_values.push_back(columns[20] + " = " + std::to_string(character_corpses_entry.class));
+		update_values.push_back(columns[20] + " = " + std::to_string(character_corpses_entry.class_));
 		update_values.push_back(columns[21] + " = " + std::to_string(character_corpses_entry.deity));
 		update_values.push_back(columns[22] + " = " + std::to_string(character_corpses_entry.texture));
 		update_values.push_back(columns[23] + " = " + std::to_string(character_corpses_entry.helm_texture));
@@ -395,7 +366,7 @@ public:
 		update_values.push_back(columns[45] + " = " + std::to_string(character_corpses_entry.wc_8));
 		update_values.push_back(columns[46] + " = " + std::to_string(character_corpses_entry.wc_9));
 
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"UPDATE {} SET {} WHERE {} = {}",
 				TableName(),
@@ -409,11 +380,13 @@ public:
 	}
 
 	static CharacterCorpses InsertOne(
+		Database& db,
 		CharacterCorpses character_corpses_entry
 	)
 	{
 		std::vector<std::string> insert_values;
 
+		insert_values.push_back(std::to_string(character_corpses_entry.id));
 		insert_values.push_back(std::to_string(character_corpses_entry.charid));
 		insert_values.push_back("'" + EscapeString(character_corpses_entry.charname) + "'");
 		insert_values.push_back(std::to_string(character_corpses_entry.zone_id));
@@ -433,7 +406,7 @@ public:
 		insert_values.push_back(std::to_string(character_corpses_entry.level));
 		insert_values.push_back(std::to_string(character_corpses_entry.race));
 		insert_values.push_back(std::to_string(character_corpses_entry.gender));
-		insert_values.push_back(std::to_string(character_corpses_entry.class));
+		insert_values.push_back(std::to_string(character_corpses_entry.class_));
 		insert_values.push_back(std::to_string(character_corpses_entry.deity));
 		insert_values.push_back(std::to_string(character_corpses_entry.texture));
 		insert_values.push_back(std::to_string(character_corpses_entry.helm_texture));
@@ -461,7 +434,7 @@ public:
 		insert_values.push_back(std::to_string(character_corpses_entry.wc_8));
 		insert_values.push_back(std::to_string(character_corpses_entry.wc_9));
 
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} VALUES ({})",
 				BaseInsert(),
@@ -480,6 +453,7 @@ public:
 	}
 
 	static int InsertMany(
+		Database& db,
 		std::vector<CharacterCorpses> character_corpses_entries
 	)
 	{
@@ -488,6 +462,7 @@ public:
 		for (auto &character_corpses_entry: character_corpses_entries) {
 			std::vector<std::string> insert_values;
 
+			insert_values.push_back(std::to_string(character_corpses_entry.id));
 			insert_values.push_back(std::to_string(character_corpses_entry.charid));
 			insert_values.push_back("'" + EscapeString(character_corpses_entry.charname) + "'");
 			insert_values.push_back(std::to_string(character_corpses_entry.zone_id));
@@ -507,7 +482,7 @@ public:
 			insert_values.push_back(std::to_string(character_corpses_entry.level));
 			insert_values.push_back(std::to_string(character_corpses_entry.race));
 			insert_values.push_back(std::to_string(character_corpses_entry.gender));
-			insert_values.push_back(std::to_string(character_corpses_entry.class));
+			insert_values.push_back(std::to_string(character_corpses_entry.class_));
 			insert_values.push_back(std::to_string(character_corpses_entry.deity));
 			insert_values.push_back(std::to_string(character_corpses_entry.texture));
 			insert_values.push_back(std::to_string(character_corpses_entry.helm_texture));
@@ -540,7 +515,7 @@ public:
 
 		std::vector<std::string> insert_values;
 
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} VALUES {}",
 				BaseInsert(),
@@ -551,11 +526,11 @@ public:
 		return (results.Success() ? results.RowsAffected() : 0);
 	}
 
-	static std::vector<CharacterCorpses> All()
+	static std::vector<CharacterCorpses> All(Database& db)
 	{
 		std::vector<CharacterCorpses> all_entries;
 
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{}",
 				BaseSelect()
@@ -587,7 +562,7 @@ public:
 			entry.level            = atoi(row[17]);
 			entry.race             = atoi(row[18]);
 			entry.gender           = atoi(row[19]);
-			entry.class            = atoi(row[20]);
+			entry.class_           = atoi(row[20]);
 			entry.deity            = atoi(row[21]);
 			entry.texture          = atoi(row[22]);
 			entry.helm_texture     = atoi(row[23]);
@@ -621,11 +596,11 @@ public:
 		return all_entries;
 	}
 
-	static std::vector<CharacterCorpses> GetWhere(std::string where_filter)
+	static std::vector<CharacterCorpses> GetWhere(Database& db, std::string where_filter)
 	{
 		std::vector<CharacterCorpses> all_entries;
 
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} WHERE {}",
 				BaseSelect(),
@@ -658,7 +633,7 @@ public:
 			entry.level            = atoi(row[17]);
 			entry.race             = atoi(row[18]);
 			entry.gender           = atoi(row[19]);
-			entry.class            = atoi(row[20]);
+			entry.class_           = atoi(row[20]);
 			entry.deity            = atoi(row[21]);
 			entry.texture          = atoi(row[22]);
 			entry.helm_texture     = atoi(row[23]);
@@ -692,9 +667,9 @@ public:
 		return all_entries;
 	}
 
-	static int DeleteWhere(std::string where_filter)
+	static int DeleteWhere(Database& db, std::string where_filter)
 	{
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"DELETE FROM {} WHERE {}",
 				TableName(),
@@ -705,9 +680,9 @@ public:
 		return (results.Success() ? results.RowsAffected() : 0);
 	}
 
-	static int Truncate()
+	static int Truncate(Database& db)
 	{
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"TRUNCATE TABLE {}",
 				TableName()

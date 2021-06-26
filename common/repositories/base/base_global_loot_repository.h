@@ -1,29 +1,12 @@
 /**
- * EQEmulator: Everquest Server Emulator
- * Copyright (C) 2001-2020 EQEmulator Development Team (https://github.com/EQEmu/Server)
+ * DO NOT MODIFY THIS FILE
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY except by those people which sell it, which
- * are required to give you total support for your newly bought product;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR
- * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
- *
- */
-
-/**
  * This repository was automatically generated and is NOT to be modified directly.
- * Any repository modifications are meant to be made to
- * the repository extending the base. Any modifications to base repositories are to
- * be made by the generator only
+ * Any repository modifications are meant to be made to the repository extending the base.
+ * Any modifications to base repositories are to be made by the generator only
+ *
+ * @generator ./utils/scripts/generators/repository-generator.pl
+ * @docs https://eqemu.gitbook.io/server/in-development/developer-area/repositories
  */
 
 #ifndef EQEMU_BASE_GLOBAL_LOOT_REPOSITORY_H
@@ -44,7 +27,7 @@ public:
 		int         rare;
 		int         raid;
 		std::string race;
-		std::string class;
+		std::string class_;
 		std::string bodytype;
 		std::string zone;
 		int         hot_zone;
@@ -71,7 +54,7 @@ public:
 			"rare",
 			"raid",
 			"race",
-			"class",
+			"`class`",
 			"bodytype",
 			"zone",
 			"hot_zone",
@@ -85,21 +68,6 @@ public:
 	static std::string ColumnsRaw()
 	{
 		return std::string(implode(", ", Columns()));
-	}
-
-	static std::string InsertColumnsRaw()
-	{
-		std::vector<std::string> insert_columns;
-
-		for (auto &column : Columns()) {
-			if (column == PrimaryKey()) {
-				continue;
-			}
-
-			insert_columns.push_back(column);
-		}
-
-		return std::string(implode(", ", insert_columns));
 	}
 
 	static std::string TableName()
@@ -121,7 +89,7 @@ public:
 		return fmt::format(
 			"INSERT INTO {} ({}) ",
 			TableName(),
-			InsertColumnsRaw()
+			ColumnsRaw()
 		);
 	}
 
@@ -138,7 +106,7 @@ public:
 		entry.rare                   = 0;
 		entry.raid                   = 0;
 		entry.race                   = "";
-		entry.class                  = "";
+		entry.class_                 = "";
 		entry.bodytype               = "";
 		entry.zone                   = "";
 		entry.hot_zone               = 0;
@@ -165,10 +133,11 @@ public:
 	}
 
 	static GlobalLoot FindOne(
+		Database& db,
 		int global_loot_id
 	)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} WHERE id = {} LIMIT 1",
 				BaseSelect(),
@@ -189,7 +158,7 @@ public:
 			entry.rare                   = atoi(row[6]);
 			entry.raid                   = atoi(row[7]);
 			entry.race                   = row[8] ? row[8] : "";
-			entry.class                  = row[9] ? row[9] : "";
+			entry.class_                 = row[9] ? row[9] : "";
 			entry.bodytype               = row[10] ? row[10] : "";
 			entry.zone                   = row[11] ? row[11] : "";
 			entry.hot_zone               = atoi(row[12]);
@@ -205,10 +174,11 @@ public:
 	}
 
 	static int DeleteOne(
+		Database& db,
 		int global_loot_id
 	)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"DELETE FROM {} WHERE {} = {}",
 				TableName(),
@@ -221,6 +191,7 @@ public:
 	}
 
 	static int UpdateOne(
+		Database& db,
 		GlobalLoot global_loot_entry
 	)
 	{
@@ -236,7 +207,7 @@ public:
 		update_values.push_back(columns[6] + " = " + std::to_string(global_loot_entry.rare));
 		update_values.push_back(columns[7] + " = " + std::to_string(global_loot_entry.raid));
 		update_values.push_back(columns[8] + " = '" + EscapeString(global_loot_entry.race) + "'");
-		update_values.push_back(columns[9] + " = '" + EscapeString(global_loot_entry.class) + "'");
+		update_values.push_back(columns[9] + " = '" + EscapeString(global_loot_entry.class_) + "'");
 		update_values.push_back(columns[10] + " = '" + EscapeString(global_loot_entry.bodytype) + "'");
 		update_values.push_back(columns[11] + " = '" + EscapeString(global_loot_entry.zone) + "'");
 		update_values.push_back(columns[12] + " = " + std::to_string(global_loot_entry.hot_zone));
@@ -245,7 +216,7 @@ public:
 		update_values.push_back(columns[15] + " = '" + EscapeString(global_loot_entry.content_flags) + "'");
 		update_values.push_back(columns[16] + " = '" + EscapeString(global_loot_entry.content_flags_disabled) + "'");
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"UPDATE {} SET {} WHERE {} = {}",
 				TableName(),
@@ -259,11 +230,13 @@ public:
 	}
 
 	static GlobalLoot InsertOne(
+		Database& db,
 		GlobalLoot global_loot_entry
 	)
 	{
 		std::vector<std::string> insert_values;
 
+		insert_values.push_back(std::to_string(global_loot_entry.id));
 		insert_values.push_back("'" + EscapeString(global_loot_entry.description) + "'");
 		insert_values.push_back(std::to_string(global_loot_entry.loottable_id));
 		insert_values.push_back(std::to_string(global_loot_entry.enabled));
@@ -272,7 +245,7 @@ public:
 		insert_values.push_back(std::to_string(global_loot_entry.rare));
 		insert_values.push_back(std::to_string(global_loot_entry.raid));
 		insert_values.push_back("'" + EscapeString(global_loot_entry.race) + "'");
-		insert_values.push_back("'" + EscapeString(global_loot_entry.class) + "'");
+		insert_values.push_back("'" + EscapeString(global_loot_entry.class_) + "'");
 		insert_values.push_back("'" + EscapeString(global_loot_entry.bodytype) + "'");
 		insert_values.push_back("'" + EscapeString(global_loot_entry.zone) + "'");
 		insert_values.push_back(std::to_string(global_loot_entry.hot_zone));
@@ -281,7 +254,7 @@ public:
 		insert_values.push_back("'" + EscapeString(global_loot_entry.content_flags) + "'");
 		insert_values.push_back("'" + EscapeString(global_loot_entry.content_flags_disabled) + "'");
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} VALUES ({})",
 				BaseInsert(),
@@ -300,6 +273,7 @@ public:
 	}
 
 	static int InsertMany(
+		Database& db,
 		std::vector<GlobalLoot> global_loot_entries
 	)
 	{
@@ -308,6 +282,7 @@ public:
 		for (auto &global_loot_entry: global_loot_entries) {
 			std::vector<std::string> insert_values;
 
+			insert_values.push_back(std::to_string(global_loot_entry.id));
 			insert_values.push_back("'" + EscapeString(global_loot_entry.description) + "'");
 			insert_values.push_back(std::to_string(global_loot_entry.loottable_id));
 			insert_values.push_back(std::to_string(global_loot_entry.enabled));
@@ -316,7 +291,7 @@ public:
 			insert_values.push_back(std::to_string(global_loot_entry.rare));
 			insert_values.push_back(std::to_string(global_loot_entry.raid));
 			insert_values.push_back("'" + EscapeString(global_loot_entry.race) + "'");
-			insert_values.push_back("'" + EscapeString(global_loot_entry.class) + "'");
+			insert_values.push_back("'" + EscapeString(global_loot_entry.class_) + "'");
 			insert_values.push_back("'" + EscapeString(global_loot_entry.bodytype) + "'");
 			insert_values.push_back("'" + EscapeString(global_loot_entry.zone) + "'");
 			insert_values.push_back(std::to_string(global_loot_entry.hot_zone));
@@ -330,7 +305,7 @@ public:
 
 		std::vector<std::string> insert_values;
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} VALUES {}",
 				BaseInsert(),
@@ -341,11 +316,11 @@ public:
 		return (results.Success() ? results.RowsAffected() : 0);
 	}
 
-	static std::vector<GlobalLoot> All()
+	static std::vector<GlobalLoot> All(Database& db)
 	{
 		std::vector<GlobalLoot> all_entries;
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{}",
 				BaseSelect()
@@ -366,7 +341,7 @@ public:
 			entry.rare                   = atoi(row[6]);
 			entry.raid                   = atoi(row[7]);
 			entry.race                   = row[8] ? row[8] : "";
-			entry.class                  = row[9] ? row[9] : "";
+			entry.class_                 = row[9] ? row[9] : "";
 			entry.bodytype               = row[10] ? row[10] : "";
 			entry.zone                   = row[11] ? row[11] : "";
 			entry.hot_zone               = atoi(row[12]);
@@ -381,11 +356,11 @@ public:
 		return all_entries;
 	}
 
-	static std::vector<GlobalLoot> GetWhere(std::string where_filter)
+	static std::vector<GlobalLoot> GetWhere(Database& db, std::string where_filter)
 	{
 		std::vector<GlobalLoot> all_entries;
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} WHERE {}",
 				BaseSelect(),
@@ -407,7 +382,7 @@ public:
 			entry.rare                   = atoi(row[6]);
 			entry.raid                   = atoi(row[7]);
 			entry.race                   = row[8] ? row[8] : "";
-			entry.class                  = row[9] ? row[9] : "";
+			entry.class_                 = row[9] ? row[9] : "";
 			entry.bodytype               = row[10] ? row[10] : "";
 			entry.zone                   = row[11] ? row[11] : "";
 			entry.hot_zone               = atoi(row[12]);
@@ -422,9 +397,9 @@ public:
 		return all_entries;
 	}
 
-	static int DeleteWhere(std::string where_filter)
+	static int DeleteWhere(Database& db, std::string where_filter)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"DELETE FROM {} WHERE {}",
 				TableName(),
@@ -435,9 +410,9 @@ public:
 		return (results.Success() ? results.RowsAffected() : 0);
 	}
 
-	static int Truncate()
+	static int Truncate(Database& db)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"TRUNCATE TABLE {}",
 				TableName()

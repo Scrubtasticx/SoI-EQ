@@ -1,29 +1,12 @@
 /**
- * EQEmulator: Everquest Server Emulator
- * Copyright (C) 2001-2020 EQEmulator Development Team (https://github.com/EQEmu/Server)
+ * DO NOT MODIFY THIS FILE
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY except by those people which sell it, which
- * are required to give you total support for your newly bought product;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR
- * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
- *
- */
-
-/**
  * This repository was automatically generated and is NOT to be modified directly.
- * Any repository modifications are meant to be made to
- * the repository extending the base. Any modifications to base repositories are to
- * be made by the generator only
+ * Any repository modifications are meant to be made to the repository extending the base.
+ * Any modifications to base repositories are to be made by the generator only
+ *
+ * @generator ./utils/scripts/generators/repository-generator.pl
+ * @docs https://eqemu.gitbook.io/server/in-development/developer-area/repositories
  */
 
 #ifndef EQEMU_BASE_CHARACTER_DATA_REPOSITORY_H
@@ -49,7 +32,7 @@ public:
 		float       heading;
 		int         gender;
 		int         race;
-		int         class;
+		int         class_;
 		int         level;
 		int         deity;
 		int         birthday;
@@ -89,7 +72,7 @@ public:
 		int         sta;
 		int         cha;
 		int         dex;
-		int         int;
+		int         int_;
 		int         agi;
 		int         wis;
 		int         zone_change_count;
@@ -161,7 +144,7 @@ public:
 			"heading",
 			"gender",
 			"race",
-			"class",
+			"`class`",
 			"level",
 			"deity",
 			"birthday",
@@ -201,7 +184,7 @@ public:
 			"sta",
 			"cha",
 			"dex",
-			"int",
+			"`int`",
 			"agi",
 			"wis",
 			"zone_change_count",
@@ -257,21 +240,6 @@ public:
 		return std::string(implode(", ", Columns()));
 	}
 
-	static std::string InsertColumnsRaw()
-	{
-		std::vector<std::string> insert_columns;
-
-		for (auto &column : Columns()) {
-			if (column == PrimaryKey()) {
-				continue;
-			}
-
-			insert_columns.push_back(column);
-		}
-
-		return std::string(implode(", ", insert_columns));
-	}
-
 	static std::string TableName()
 	{
 		return std::string("character_data");
@@ -291,7 +259,7 @@ public:
 		return fmt::format(
 			"INSERT INTO {} ({}) ",
 			TableName(),
-			InsertColumnsRaw()
+			ColumnsRaw()
 		);
 	}
 
@@ -313,7 +281,7 @@ public:
 		entry.heading                 = 0;
 		entry.gender                  = 0;
 		entry.race                    = 0;
-		entry.class                   = 0;
+		entry.class_                  = 0;
 		entry.level                   = 0;
 		entry.deity                   = 0;
 		entry.birthday                = 0;
@@ -353,7 +321,7 @@ public:
 		entry.sta                     = 0;
 		entry.cha                     = 0;
 		entry.dex                     = 0;
-		entry.int                     = 0;
+		entry.int_                    = 0;
 		entry.agi                     = 0;
 		entry.wis                     = 0;
 		entry.zone_change_count       = 0;
@@ -400,7 +368,7 @@ public:
 		entry.aa_points_spent_old     = 0;
 		entry.aa_points_old           = 0;
 		entry.e_last_invsnapshot      = 0;
-		entry.deleted_at              = 0;
+		entry.deleted_at              = "";
 
 		return entry;
 	}
@@ -420,10 +388,11 @@ public:
 	}
 
 	static CharacterData FindOne(
+		Database& db,
 		int character_data_id
 	)
 	{
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} WHERE id = {} LIMIT 1",
 				BaseSelect(),
@@ -449,7 +418,7 @@ public:
 			entry.heading                 = static_cast<float>(atof(row[11]));
 			entry.gender                  = atoi(row[12]);
 			entry.race                    = atoi(row[13]);
-			entry.class                   = atoi(row[14]);
+			entry.class_                  = atoi(row[14]);
 			entry.level                   = atoi(row[15]);
 			entry.deity                   = atoi(row[16]);
 			entry.birthday                = atoi(row[17]);
@@ -489,7 +458,7 @@ public:
 			entry.sta                     = atoi(row[51]);
 			entry.cha                     = atoi(row[52]);
 			entry.dex                     = atoi(row[53]);
-			entry.int                     = atoi(row[54]);
+			entry.int_                    = atoi(row[54]);
 			entry.agi                     = atoi(row[55]);
 			entry.wis                     = atoi(row[56]);
 			entry.zone_change_count       = atoi(row[57]);
@@ -545,10 +514,11 @@ public:
 	}
 
 	static int DeleteOne(
+		Database& db,
 		int character_data_id
 	)
 	{
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"DELETE FROM {} WHERE {} = {}",
 				TableName(),
@@ -561,6 +531,7 @@ public:
 	}
 
 	static int UpdateOne(
+		Database& db,
 		CharacterData character_data_entry
 	)
 	{
@@ -581,7 +552,7 @@ public:
 		update_values.push_back(columns[11] + " = " + std::to_string(character_data_entry.heading));
 		update_values.push_back(columns[12] + " = " + std::to_string(character_data_entry.gender));
 		update_values.push_back(columns[13] + " = " + std::to_string(character_data_entry.race));
-		update_values.push_back(columns[14] + " = " + std::to_string(character_data_entry.class));
+		update_values.push_back(columns[14] + " = " + std::to_string(character_data_entry.class_));
 		update_values.push_back(columns[15] + " = " + std::to_string(character_data_entry.level));
 		update_values.push_back(columns[16] + " = " + std::to_string(character_data_entry.deity));
 		update_values.push_back(columns[17] + " = " + std::to_string(character_data_entry.birthday));
@@ -621,7 +592,7 @@ public:
 		update_values.push_back(columns[51] + " = " + std::to_string(character_data_entry.sta));
 		update_values.push_back(columns[52] + " = " + std::to_string(character_data_entry.cha));
 		update_values.push_back(columns[53] + " = " + std::to_string(character_data_entry.dex));
-		update_values.push_back(columns[54] + " = " + std::to_string(character_data_entry.int));
+		update_values.push_back(columns[54] + " = " + std::to_string(character_data_entry.int_));
 		update_values.push_back(columns[55] + " = " + std::to_string(character_data_entry.agi));
 		update_values.push_back(columns[56] + " = " + std::to_string(character_data_entry.wis));
 		update_values.push_back(columns[57] + " = " + std::to_string(character_data_entry.zone_change_count));
@@ -670,7 +641,7 @@ public:
 		update_values.push_back(columns[100] + " = " + std::to_string(character_data_entry.e_last_invsnapshot));
 		update_values.push_back(columns[101] + " = '" + EscapeString(character_data_entry.deleted_at) + "'");
 
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"UPDATE {} SET {} WHERE {} = {}",
 				TableName(),
@@ -684,11 +655,13 @@ public:
 	}
 
 	static CharacterData InsertOne(
+		Database& db,
 		CharacterData character_data_entry
 	)
 	{
 		std::vector<std::string> insert_values;
 
+		insert_values.push_back(std::to_string(character_data_entry.id));
 		insert_values.push_back(std::to_string(character_data_entry.account_id));
 		insert_values.push_back("'" + EscapeString(character_data_entry.name) + "'");
 		insert_values.push_back("'" + EscapeString(character_data_entry.last_name) + "'");
@@ -702,7 +675,7 @@ public:
 		insert_values.push_back(std::to_string(character_data_entry.heading));
 		insert_values.push_back(std::to_string(character_data_entry.gender));
 		insert_values.push_back(std::to_string(character_data_entry.race));
-		insert_values.push_back(std::to_string(character_data_entry.class));
+		insert_values.push_back(std::to_string(character_data_entry.class_));
 		insert_values.push_back(std::to_string(character_data_entry.level));
 		insert_values.push_back(std::to_string(character_data_entry.deity));
 		insert_values.push_back(std::to_string(character_data_entry.birthday));
@@ -742,7 +715,7 @@ public:
 		insert_values.push_back(std::to_string(character_data_entry.sta));
 		insert_values.push_back(std::to_string(character_data_entry.cha));
 		insert_values.push_back(std::to_string(character_data_entry.dex));
-		insert_values.push_back(std::to_string(character_data_entry.int));
+		insert_values.push_back(std::to_string(character_data_entry.int_));
 		insert_values.push_back(std::to_string(character_data_entry.agi));
 		insert_values.push_back(std::to_string(character_data_entry.wis));
 		insert_values.push_back(std::to_string(character_data_entry.zone_change_count));
@@ -791,7 +764,7 @@ public:
 		insert_values.push_back(std::to_string(character_data_entry.e_last_invsnapshot));
 		insert_values.push_back("'" + EscapeString(character_data_entry.deleted_at) + "'");
 
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} VALUES ({})",
 				BaseInsert(),
@@ -810,6 +783,7 @@ public:
 	}
 
 	static int InsertMany(
+		Database& db,
 		std::vector<CharacterData> character_data_entries
 	)
 	{
@@ -818,6 +792,7 @@ public:
 		for (auto &character_data_entry: character_data_entries) {
 			std::vector<std::string> insert_values;
 
+			insert_values.push_back(std::to_string(character_data_entry.id));
 			insert_values.push_back(std::to_string(character_data_entry.account_id));
 			insert_values.push_back("'" + EscapeString(character_data_entry.name) + "'");
 			insert_values.push_back("'" + EscapeString(character_data_entry.last_name) + "'");
@@ -831,7 +806,7 @@ public:
 			insert_values.push_back(std::to_string(character_data_entry.heading));
 			insert_values.push_back(std::to_string(character_data_entry.gender));
 			insert_values.push_back(std::to_string(character_data_entry.race));
-			insert_values.push_back(std::to_string(character_data_entry.class));
+			insert_values.push_back(std::to_string(character_data_entry.class_));
 			insert_values.push_back(std::to_string(character_data_entry.level));
 			insert_values.push_back(std::to_string(character_data_entry.deity));
 			insert_values.push_back(std::to_string(character_data_entry.birthday));
@@ -871,7 +846,7 @@ public:
 			insert_values.push_back(std::to_string(character_data_entry.sta));
 			insert_values.push_back(std::to_string(character_data_entry.cha));
 			insert_values.push_back(std::to_string(character_data_entry.dex));
-			insert_values.push_back(std::to_string(character_data_entry.int));
+			insert_values.push_back(std::to_string(character_data_entry.int_));
 			insert_values.push_back(std::to_string(character_data_entry.agi));
 			insert_values.push_back(std::to_string(character_data_entry.wis));
 			insert_values.push_back(std::to_string(character_data_entry.zone_change_count));
@@ -925,7 +900,7 @@ public:
 
 		std::vector<std::string> insert_values;
 
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} VALUES {}",
 				BaseInsert(),
@@ -936,11 +911,11 @@ public:
 		return (results.Success() ? results.RowsAffected() : 0);
 	}
 
-	static std::vector<CharacterData> All()
+	static std::vector<CharacterData> All(Database& db)
 	{
 		std::vector<CharacterData> all_entries;
 
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{}",
 				BaseSelect()
@@ -966,7 +941,7 @@ public:
 			entry.heading                 = static_cast<float>(atof(row[11]));
 			entry.gender                  = atoi(row[12]);
 			entry.race                    = atoi(row[13]);
-			entry.class                   = atoi(row[14]);
+			entry.class_                  = atoi(row[14]);
 			entry.level                   = atoi(row[15]);
 			entry.deity                   = atoi(row[16]);
 			entry.birthday                = atoi(row[17]);
@@ -1006,7 +981,7 @@ public:
 			entry.sta                     = atoi(row[51]);
 			entry.cha                     = atoi(row[52]);
 			entry.dex                     = atoi(row[53]);
-			entry.int                     = atoi(row[54]);
+			entry.int_                    = atoi(row[54]);
 			entry.agi                     = atoi(row[55]);
 			entry.wis                     = atoi(row[56]);
 			entry.zone_change_count       = atoi(row[57]);
@@ -1061,11 +1036,11 @@ public:
 		return all_entries;
 	}
 
-	static std::vector<CharacterData> GetWhere(std::string where_filter)
+	static std::vector<CharacterData> GetWhere(Database& db, std::string where_filter)
 	{
 		std::vector<CharacterData> all_entries;
 
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} WHERE {}",
 				BaseSelect(),
@@ -1092,7 +1067,7 @@ public:
 			entry.heading                 = static_cast<float>(atof(row[11]));
 			entry.gender                  = atoi(row[12]);
 			entry.race                    = atoi(row[13]);
-			entry.class                   = atoi(row[14]);
+			entry.class_                  = atoi(row[14]);
 			entry.level                   = atoi(row[15]);
 			entry.deity                   = atoi(row[16]);
 			entry.birthday                = atoi(row[17]);
@@ -1132,7 +1107,7 @@ public:
 			entry.sta                     = atoi(row[51]);
 			entry.cha                     = atoi(row[52]);
 			entry.dex                     = atoi(row[53]);
-			entry.int                     = atoi(row[54]);
+			entry.int_                    = atoi(row[54]);
 			entry.agi                     = atoi(row[55]);
 			entry.wis                     = atoi(row[56]);
 			entry.zone_change_count       = atoi(row[57]);
@@ -1187,9 +1162,9 @@ public:
 		return all_entries;
 	}
 
-	static int DeleteWhere(std::string where_filter)
+	static int DeleteWhere(Database& db, std::string where_filter)
 	{
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"DELETE FROM {} WHERE {}",
 				TableName(),
@@ -1200,9 +1175,9 @@ public:
 		return (results.Success() ? results.RowsAffected() : 0);
 	}
 
-	static int Truncate()
+	static int Truncate(Database& db)
 	{
-		auto results = database.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"TRUNCATE TABLE {}",
 				TableName()

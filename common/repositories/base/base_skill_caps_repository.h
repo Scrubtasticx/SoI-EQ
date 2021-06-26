@@ -1,29 +1,12 @@
 /**
- * EQEmulator: Everquest Server Emulator
- * Copyright (C) 2001-2020 EQEmulator Development Team (https://github.com/EQEmu/Server)
+ * DO NOT MODIFY THIS FILE
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY except by those people which sell it, which
- * are required to give you total support for your newly bought product;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR
- * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
- *
- */
-
-/**
  * This repository was automatically generated and is NOT to be modified directly.
- * Any repository modifications are meant to be made to
- * the repository extending the base. Any modifications to base repositories are to
- * be made by the generator only
+ * Any repository modifications are meant to be made to the repository extending the base.
+ * Any modifications to base repositories are to be made by the generator only
+ *
+ * @generator ./utils/scripts/generators/repository-generator.pl
+ * @docs https://eqemu.gitbook.io/server/in-development/developer-area/repositories
  */
 
 #ifndef EQEMU_BASE_SKILL_CAPS_REPOSITORY_H
@@ -36,7 +19,7 @@ class BaseSkillCapsRepository {
 public:
 	struct SkillCaps {
 		int skillID;
-		int class;
+		int class_;
 		int level;
 		int cap;
 		int class_;
@@ -51,7 +34,7 @@ public:
 	{
 		return {
 			"skillID",
-			"class",
+			"`class`",
 			"level",
 			"cap",
 			"class_",
@@ -61,21 +44,6 @@ public:
 	static std::string ColumnsRaw()
 	{
 		return std::string(implode(", ", Columns()));
-	}
-
-	static std::string InsertColumnsRaw()
-	{
-		std::vector<std::string> insert_columns;
-
-		for (auto &column : Columns()) {
-			if (column == PrimaryKey()) {
-				continue;
-			}
-
-			insert_columns.push_back(column);
-		}
-
-		return std::string(implode(", ", insert_columns));
 	}
 
 	static std::string TableName()
@@ -97,7 +65,7 @@ public:
 		return fmt::format(
 			"INSERT INTO {} ({}) ",
 			TableName(),
-			InsertColumnsRaw()
+			ColumnsRaw()
 		);
 	}
 
@@ -106,7 +74,7 @@ public:
 		SkillCaps entry{};
 
 		entry.skillID = 0;
-		entry.class   = 0;
+		entry.class_  = 0;
 		entry.level   = 0;
 		entry.cap     = 0;
 		entry.class_  = 0;
@@ -129,10 +97,11 @@ public:
 	}
 
 	static SkillCaps FindOne(
+		Database& db,
 		int skill_caps_id
 	)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} WHERE id = {} LIMIT 1",
 				BaseSelect(),
@@ -145,7 +114,7 @@ public:
 			SkillCaps entry{};
 
 			entry.skillID = atoi(row[0]);
-			entry.class   = atoi(row[1]);
+			entry.class_  = atoi(row[1]);
 			entry.level   = atoi(row[2]);
 			entry.cap     = atoi(row[3]);
 			entry.class_  = atoi(row[4]);
@@ -157,10 +126,11 @@ public:
 	}
 
 	static int DeleteOne(
+		Database& db,
 		int skill_caps_id
 	)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"DELETE FROM {} WHERE {} = {}",
 				TableName(),
@@ -173,6 +143,7 @@ public:
 	}
 
 	static int UpdateOne(
+		Database& db,
 		SkillCaps skill_caps_entry
 	)
 	{
@@ -181,12 +152,12 @@ public:
 		auto columns = Columns();
 
 		update_values.push_back(columns[0] + " = " + std::to_string(skill_caps_entry.skillID));
-		update_values.push_back(columns[1] + " = " + std::to_string(skill_caps_entry.class));
+		update_values.push_back(columns[1] + " = " + std::to_string(skill_caps_entry.class_));
 		update_values.push_back(columns[2] + " = " + std::to_string(skill_caps_entry.level));
 		update_values.push_back(columns[3] + " = " + std::to_string(skill_caps_entry.cap));
 		update_values.push_back(columns[4] + " = " + std::to_string(skill_caps_entry.class_));
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"UPDATE {} SET {} WHERE {} = {}",
 				TableName(),
@@ -200,18 +171,19 @@ public:
 	}
 
 	static SkillCaps InsertOne(
+		Database& db,
 		SkillCaps skill_caps_entry
 	)
 	{
 		std::vector<std::string> insert_values;
 
 		insert_values.push_back(std::to_string(skill_caps_entry.skillID));
-		insert_values.push_back(std::to_string(skill_caps_entry.class));
+		insert_values.push_back(std::to_string(skill_caps_entry.class_));
 		insert_values.push_back(std::to_string(skill_caps_entry.level));
 		insert_values.push_back(std::to_string(skill_caps_entry.cap));
 		insert_values.push_back(std::to_string(skill_caps_entry.class_));
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} VALUES ({})",
 				BaseInsert(),
@@ -230,6 +202,7 @@ public:
 	}
 
 	static int InsertMany(
+		Database& db,
 		std::vector<SkillCaps> skill_caps_entries
 	)
 	{
@@ -239,7 +212,7 @@ public:
 			std::vector<std::string> insert_values;
 
 			insert_values.push_back(std::to_string(skill_caps_entry.skillID));
-			insert_values.push_back(std::to_string(skill_caps_entry.class));
+			insert_values.push_back(std::to_string(skill_caps_entry.class_));
 			insert_values.push_back(std::to_string(skill_caps_entry.level));
 			insert_values.push_back(std::to_string(skill_caps_entry.cap));
 			insert_values.push_back(std::to_string(skill_caps_entry.class_));
@@ -249,7 +222,7 @@ public:
 
 		std::vector<std::string> insert_values;
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} VALUES {}",
 				BaseInsert(),
@@ -260,11 +233,11 @@ public:
 		return (results.Success() ? results.RowsAffected() : 0);
 	}
 
-	static std::vector<SkillCaps> All()
+	static std::vector<SkillCaps> All(Database& db)
 	{
 		std::vector<SkillCaps> all_entries;
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{}",
 				BaseSelect()
@@ -277,7 +250,7 @@ public:
 			SkillCaps entry{};
 
 			entry.skillID = atoi(row[0]);
-			entry.class   = atoi(row[1]);
+			entry.class_  = atoi(row[1]);
 			entry.level   = atoi(row[2]);
 			entry.cap     = atoi(row[3]);
 			entry.class_  = atoi(row[4]);
@@ -288,11 +261,11 @@ public:
 		return all_entries;
 	}
 
-	static std::vector<SkillCaps> GetWhere(std::string where_filter)
+	static std::vector<SkillCaps> GetWhere(Database& db, std::string where_filter)
 	{
 		std::vector<SkillCaps> all_entries;
 
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"{} WHERE {}",
 				BaseSelect(),
@@ -306,7 +279,7 @@ public:
 			SkillCaps entry{};
 
 			entry.skillID = atoi(row[0]);
-			entry.class   = atoi(row[1]);
+			entry.class_  = atoi(row[1]);
 			entry.level   = atoi(row[2]);
 			entry.cap     = atoi(row[3]);
 			entry.class_  = atoi(row[4]);
@@ -317,9 +290,9 @@ public:
 		return all_entries;
 	}
 
-	static int DeleteWhere(std::string where_filter)
+	static int DeleteWhere(Database& db, std::string where_filter)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"DELETE FROM {} WHERE {}",
 				TableName(),
@@ -330,9 +303,9 @@ public:
 		return (results.Success() ? results.RowsAffected() : 0);
 	}
 
-	static int Truncate()
+	static int Truncate(Database& db)
 	{
-		auto results = content_db.QueryDatabase(
+		auto results = db.QueryDatabase(
 			fmt::format(
 				"TRUNCATE TABLE {}",
 				TableName()

@@ -600,6 +600,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				snprintf(effect_desc, _EDLEN, "Invisibility to Animals");
 #endif
 				invisible_animals = true;
+				SetInvisible(0);
 				break;
 			}
 
@@ -610,6 +611,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				snprintf(effect_desc, _EDLEN, "Invisibility to Undead");
 #endif
 				invisible_undead = true;
+				SetInvisible(0);
 				break;
 			}
 			case SE_SeeInvis:
@@ -774,6 +776,13 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				caster->SetPet(this);
 				SetOwnerID(caster->GetID());
 				SetPetOrder(SPO_Follow);
+				SetAppearance(eaStanding);
+				// Client has saved previous pet sit/stand - make all new pets
+				// stand on charm.
+				if (caster->IsClient()) {
+					caster->CastToClient()->SetPetCommandState(PET_BUTTON_SIT,0);
+				}
+
 				SetPetType(petCharmed);
 
 				if(caster->IsClient()){
@@ -1245,7 +1254,8 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					MakePet(spell_id, spell.teleport_zone);
 					// TODO: we need to sync the states for these clients ...
 					// Will fix buttons for now
-					if (IsClient()) {
+					Mob *pet=GetPet();
+					if (IsClient() && pet) {
 						auto c = CastToClient();
 						if (c->ClientVersionBit() & EQ::versions::maskUFAndLater) {
 							c->SetPetCommandState(PET_BUTTON_SIT, 0);
@@ -1253,7 +1263,9 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 							c->SetPetCommandState(PET_BUTTON_REGROUP, 0);
 							c->SetPetCommandState(PET_BUTTON_FOLLOW, 1);
 							c->SetPetCommandState(PET_BUTTON_GUARD, 0);
-							c->SetPetCommandState(PET_BUTTON_TAUNT, 1);
+							// Creating pet from spell - taunt always false
+							// If suspended pet - that will be restore there
+							// If logging in, client will send toggle
 							c->SetPetCommandState(PET_BUTTON_HOLD, 0);
 							c->SetPetCommandState(PET_BUTTON_GHOLD, 0);
 							c->SetPetCommandState(PET_BUTTON_FOCUS, 0);
@@ -1309,7 +1321,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 #endif
 				if (caster)
 					effect_value = caster->ApplySpellEffectiveness(spell_id, effect_value);
-				
+
 				buffs[buffslot].melee_rune = effect_value;
 				break;
 			}
@@ -1470,8 +1482,9 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 					}
 				}
 
-				for (int x = EQ::textures::textureBegin; x <= EQ::textures::LastTintableTexture; x++)
+				for (int x = EQ::textures::textureBegin; x <= EQ::textures::LastTintableTexture; x++) {
 					SendWearChange(x);
+				}
 
 				if (caster == this && spell.id != 287 && spell.id != 601 &&
 				    (spellbonuses.IllusionPersistence || aabonuses.IllusionPersistence ||
@@ -1835,7 +1848,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 						Group* group = client_target->GetGroup();
 						if (!group->IsGroupMember(caster)) {
 							if (caster != this) {
-								caster->MessageString(Chat::Red, SUMMON_ONLY_GROUP_CORPSE);	
+								caster->MessageString(Chat::Red, SUMMON_ONLY_GROUP_CORPSE);
 								break;
 							}
 						}
@@ -1856,7 +1869,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 							}
 						}
 					}
-					
+
 					if (client_target) {
 						if (database.CountCharacterCorpses(client_target->CharacterID()) == 0) {
 							if (caster == this) {
@@ -2299,7 +2312,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 			}
 
 			case SE_AETaunt:
-			{			
+			{
 #ifdef SPELL_EFFECT_SPAM
 				snprintf(effect_desc, _EDLEN, "AE Taunt");
 #endif
@@ -2840,6 +2853,7 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 			case SE_StunResist:
 			case SE_MinDamageModifier:
 			case SE_DamageModifier:
+			case SE_DamageModifier2:
 			case SE_HitChance:
 			case SE_MeleeSkillCheck:
 			case SE_HundredHands:
@@ -3872,30 +3886,32 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 			case SE_Illusion:
 			{
 				SendIllusionPacket(0, GetBaseGender());
-				if(GetRace() == OGRE){
+				if (GetRace() == OGRE) {
 					SendAppearancePacket(AT_Size, 9);
 				}
-				else if(GetRace() == TROLL){
+				else if (GetRace() == TROLL) {
 					SendAppearancePacket(AT_Size, 8);
 				}
-				else if(GetRace() == VAHSHIR || GetRace() == FROGLOK || GetRace() == BARBARIAN){
+				else if (GetRace() == VAHSHIR || GetRace() == FROGLOK || GetRace() == BARBARIAN) {
 					SendAppearancePacket(AT_Size, 7);
 				}
-				else if(GetRace() == HALF_ELF || GetRace() == WOOD_ELF || GetRace() == DARK_ELF){
+				else if (GetRace() == HALF_ELF || GetRace() == WOOD_ELF || GetRace() == DARK_ELF) {
 					SendAppearancePacket(AT_Size, 5);
 				}
-				else if(GetRace() == DWARF){
+				else if (GetRace() == DWARF) {
 					SendAppearancePacket(AT_Size, 4);
 				}
-				else if(GetRace() == HALFLING || GetRace() == GNOME){
+				else if (GetRace() == HALFLING || GetRace() == GNOME) {
 					SendAppearancePacket(AT_Size, 3);
 				}
-				else{
+				else {
 					SendAppearancePacket(AT_Size, 6);
 				}
-				for (int x = EQ::textures::textureBegin; x <= EQ::textures::LastTintableTexture; x++){
+
+				for (int x = EQ::textures::textureBegin; x <= EQ::textures::LastTintableTexture; x++) {
 					SendWearChange(x);
 				}
+
 				break;
 			}
 
@@ -4005,6 +4021,35 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 				if (IsAIControlled())
 				{
 					// clear the hate list of the mobs
+					if (RuleB(Spells, PreventFactionWarOnCharmBreak)) {
+						for (auto mob : hate_list.GetHateList()) {
+							auto tar = mob->entity_on_hatelist;
+							if (tar->IsCasting()) {
+								tar->InterruptSpell(tar->CastingSpellID());
+							}
+							uint32 buff_count = tar->GetMaxTotalSlots();
+							for (unsigned int j = 0; j < buff_count; j++) {
+								if (tar->GetBuffs()[j].spellid != SPELL_UNKNOWN) {
+									auto spell = spells[tar->GetBuffs()[j].spellid];
+									if (spell.goodEffect == 0 && IsEffectInSpell(spell.id, SE_CurrentHP) && tar->GetBuffs()[j].casterid == GetID()) {
+										tar->BuffFadeBySpellID(spell.id);
+									}
+								}
+							}
+						}
+						if (IsCasting()) {
+							InterruptSpell(CastingSpellID());
+						}
+						uint32 buff_count = GetMaxTotalSlots();
+						for (unsigned int j = 0; j < buff_count; j++) {
+							if (GetBuffs()[j].spellid != SPELL_UNKNOWN) {
+								auto spell = spells[this->GetBuffs()[j].spellid];
+								if (spell.goodEffect == 0 && IsEffectInSpell(spell.id, SE_CurrentHP)) {
+									BuffFadeBySpellID(spell.id);
+								}
+							}
+						}
+					}
 					entity_list.ReplaceWithTarget(this, tempmob);
 					WipeHateList();
 					if(tempmob)
@@ -4016,7 +4061,7 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 					auto app = new EQApplicationPacket(OP_Charm, sizeof(Charm_Struct));
 					Charm_Struct *ps = (Charm_Struct*)app->pBuffer;
 					ps->owner_id = tempmob->GetID();
-					ps->pet_id = this->GetID();
+					ps->pet_id = GetID();
 					ps->command = 0;
 					entity_list.QueueClients(this, app);
 					safe_delete(app);
@@ -4109,7 +4154,7 @@ void Mob::BuffFadeBySlot(int slot, bool iRecalcBonuses)
 					CastToClient()->SetControlledMobId(0);
 					}
 			}
-					
+
 		}
 	}
 
@@ -6753,24 +6798,24 @@ void Mob::ResourceTap(int32 damage, uint16 spellid)
 	for (int i = 0; i < EFFECT_COUNT; i++) {
 		if (spells[spellid].effectid[i] == SE_ResourceTap) {
 			damage = (damage * spells[spellid].base[i]) / 1000;
-			
+
 			if (damage) {
 				if (spells[spellid].max[i] && (damage > spells[spellid].max[i]))
 					damage = spells[spellid].max[i];
-	
+
 				if (spells[spellid].base2[i] == 0) { // HP Tap
 					if (damage > 0)
 						HealDamage(damage);
 					else
 						Damage(this, -damage, 0, EQ::skills::SkillEvocation, false);
 				}
-	
+
 				if (spells[spellid].base2[i] == 1) // Mana Tap
 					SetMana(GetMana() + damage);
-	
+
 				if (spells[spellid].base2[i] == 2 && IsClient()) // Endurance Tap
 					CastToClient()->SetEndurance(CastToClient()->GetEndurance() + damage);
-			
+
 			}
 		}
 	}
@@ -6947,7 +6992,7 @@ void Client::BreakFeignDeathWhenCastOn(bool IsResisted)
 			MessageString(Chat::SpellFailure,FD_CAST_ON_NO_BREAK);
 			return;
 		}
-	
+
 		SetFeigned(false);
 		MessageString(Chat::SpellFailure,FD_CAST_ON);
 	}
