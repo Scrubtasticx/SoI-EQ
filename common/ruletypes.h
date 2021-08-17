@@ -378,6 +378,7 @@ RULE_BOOL(Spells, CazicTouchTargetsPetOwner, true, "If True, causes Cazic Touch 
 RULE_BOOL(Spells, PreventFactionWarOnCharmBreak, false, "Enable spell interupts and dot removal on charm break to prevent faction wars.")
 RULE_BOOL(Spells, AllowDoubleInvis, false, "Allows you to cast invisibility spells on a player that is already invisible")
 RULE_BOOL(Spells, AllowSpellMemorizeFromItem, false, "Allows players to memorize spells by right-clicking spell scrolls")
+RULE_BOOL(Spells, InvisRequiresGroup, false, "Invis requires the the target to be in group.")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Combat)
@@ -526,6 +527,7 @@ RULE_INT(Aggro, ClientAggroCheckMovingInterval, 1000, "Interval in which clients
 RULE_INT(Aggro, ClientAggroCheckIdleInterval, 6000, "Interval in which clients actually check for aggro while idle - in milliseconds - this should be higher than ClientAggroCheckMovingInterval")
 RULE_REAL(Aggro, PetAttackRange, 40000.0, "Maximum squared range /pet attack works at default is 200")
 RULE_BOOL(Aggro, NPCAggroMaxDistanceEnabled, true, "If enabled, NPC's will drop aggro beyond 600 units or what is defined at the zone level")
+RULE_BOOL(Aggro, AggroPlayerPets, false, "If enabled, NPCs will aggro player pets")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(TaskSystem)
