@@ -4,10 +4,10 @@
 			"channelid" : "756595436311150662",
 			"itemurl" : "http://redemptioneq.ddns.net/alla/?a=item&id=",
 			"refreshrate" : "15",
-			"clientid": "858544584296235038",
+			"clientid": "669398276549771265",
 			"clientsecret": "33333",
 			"serverid" : "668638800578215957",
-			"username" : "ODU4NTQ0NTg0Mjk2MjM1MDM4.YNfr8w.TK0erLSxa--swebyQuuTSRF_pPQ"
+			"username" : "NjY5Mzk4Mjc2NTQ5NzcxMjY1.XijBEQ.5Jx-M9-O59FkM3-fiNWtMC0tH0g"
 		},
 		  "chatserver" : {
                "host" : "127.0.0.1",
@@ -56,7 +56,7 @@
                },
                "longname" : "Redemption EQ <Alpha>",
                "shortname" : "REQ",
-			   "locked": "true",
+			   "locked": "false",
                "tcp" : {
                     "ip" : "192.168.0.2",
                     "port" : "14138"

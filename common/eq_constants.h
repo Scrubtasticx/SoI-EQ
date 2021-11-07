@@ -65,6 +65,7 @@
 #define AT_FindBits 46		// set FindBits, whatever those are!
 #define AT_TextureType 48	// TextureType
 #define AT_FacePick 49		// Turns off face pick window? maybe ...
+#define AT_AntiCheat 51		// sent by the client randomly telling the server how long since last action has occured
 #define AT_GuildShow 52		// this is what MQ2 call sit, not sure
 #define AT_Offline 53		// Offline mode
 
@@ -971,6 +972,41 @@ enum class DynamicZoneMemberStatus : uint8_t
 	Offline,
 	InDynamicZone,
 	LinkDead
+};
+
+enum LDoNThemes {
+	Unused = 0,
+	GUK,
+	MIR,
+	MMC,
+	RUJ,
+	TAK
+};
+
+enum LDoNThemeBits {
+	UnusedBit = 0,
+	GUKBit = 1,
+	MIRBit = 2,
+	MMCBit = 4,
+	RUJBit = 8,
+	TAKBit = 16
+};
+
+enum StartZoneIndex {
+    Odus = 0,
+    Qeynos,
+    Halas,
+    Rivervale,
+    Freeport,
+    Neriak,
+    Grobb,
+    Oggok,
+    Kaladim,
+    GreaterFaydark,
+    Felwithe,
+    Akanon,
+    Cabilis,
+    SharVahl
 };
 
 #endif /*COMMON_EQ_CONSTANTS_H*/

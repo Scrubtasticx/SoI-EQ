@@ -156,6 +156,9 @@ void Mob::DoSpecialAttackDamage(Mob *who, EQ::skills::SkillType skill, int32 bas
 	if (my_hit.base_damage == 0)
 		my_hit.base_damage = GetBaseSkillDamage(my_hit.skill);
 
+	if (base_damage == DMG_INVULNERABLE)
+		my_hit.damage_done = DMG_INVULNERABLE;
+
 	if (who->GetInvul() || who->GetSpecialAbility(IMMUNE_MELEE))
 		my_hit.damage_done = DMG_INVULNERABLE;
 
@@ -198,7 +201,7 @@ void Mob::DoSpecialAttackDamage(Mob *who, EQ::skills::SkillType skill, int32 bas
 		float chance = aabonuses.SkillAttackProc[SBIndex::SKILLPROC_CHANCE] / 1000.0f;
 		if (zone->random.Roll(chance))
 			SpellFinished(aabonuses.SkillAttackProc[SBIndex::SKILLPROC_SPELL_ID], who, EQ::spells::CastingSlot::Item, 0, -1,
-						  spells[aabonuses.SkillAttackProc[SBIndex::SKILLPROC_SPELL_ID]].ResistDiff);
+						  spells[aabonuses.SkillAttackProc[SBIndex::SKILLPROC_SPELL_ID]].resist_difficulty);
 	}
 
 	who->Damage(this, my_hit.damage_done, SPELL_UNKNOWN, skill, false);
@@ -835,9 +838,9 @@ void Mob::DoArcheryAttackDmg(Mob *other, const EQ::ItemInstance *RangeWeapon, co
 		return;
 	}
 
-	// unsure when this should happen
-	if (focus) // From FcBaseEffects
+	if (focus) {
 		WDmg += WDmg * focus / 100;
+	}
 
 	if (WDmg > 0 || ADmg > 0) {
 		if (WDmg < 0)
@@ -1036,7 +1039,7 @@ void Mob::ProjectileAttack()
 					if (ProjectileAtk[i].skill == EQ::skills::SkillConjuration) {
 						if (IsValidSpell(ProjectileAtk[i].wpn_dmg))
 							SpellOnTarget(ProjectileAtk[i].wpn_dmg, target, false, true,
-								      spells[ProjectileAtk[i].wpn_dmg].ResistDiff,
+								      spells[ProjectileAtk[i].wpn_dmg].resist_difficulty,
 								      true);
 					} else {
 						CastToNPC()->DoRangedAttackDmg(
@@ -1056,7 +1059,7 @@ void Mob::ProjectileAttack()
 					else if (ProjectileAtk[i].skill == EQ::skills::SkillConjuration &&
 						 IsValidSpell(ProjectileAtk[i].wpn_dmg))
 						SpellOnTarget(ProjectileAtk[i].wpn_dmg, target, false, true,
-							      spells[ProjectileAtk[i].wpn_dmg].ResistDiff, true);
+							      spells[ProjectileAtk[i].wpn_dmg].resist_difficulty, true);
 				}
 			}
 
@@ -1649,8 +1652,9 @@ void NPC::DoClassAttacks(Mob *target) {
 					DoAnim(animKick, 0, false);
 					int32 dmg = GetBaseSkillDamage(EQ::skills::SkillKick);
 
-					if (GetWeaponDamage(target, (const EQ::ItemData*)nullptr) <= 0)
+					if (GetWeaponDamage(target, (const EQ::ItemData*)nullptr) <= 0) {
 						dmg = DMG_INVULNERABLE;
+					}
 
 					reuse = (KickReuseTime + 3) * 1000;
 					DoSpecialAttackDamage(target, EQ::skills::SkillKick, dmg, GetMinDamage(), -1, reuse);
@@ -2043,7 +2047,7 @@ void Mob::InstillDoubt(Mob *who) {
 		//temporary hack...
 		//cast fear on them... should prolly be a different spell
 		//and should be un-resistable.
-		SpellOnTarget(229, who, false, true, -2000);
+		SpellOnTarget(229, who, 0, true, -2000);
 		//is there a success message?
 	} else {
 		MessageString(Chat::LightBlue,NOT_SCARING);
@@ -2154,8 +2158,9 @@ void Mob::DoMeleeSkillAttackDmg(Mob *other, uint16 weapon_damage, EQ::skills::Sk
 		hate = weapon_damage;
 
 	if (weapon_damage > 0) {
-		if (focus) // From FcBaseEffects
+		if (focus) {
 			weapon_damage += weapon_damage * focus / 100;
+		}
 
 		if (skillinuse == EQ::skills::SkillBash) {
 			if (IsClient()) {
@@ -2203,7 +2208,7 @@ void Mob::DoMeleeSkillAttackDmg(Mob *other, uint16 weapon_damage, EQ::skills::Sk
 		float chance = aabonuses.SkillAttackProc[SBIndex::SKILLPROC_CHANCE] / 1000.0f;
 		if (zone->random.Roll(chance))
 			SpellFinished(aabonuses.SkillAttackProc[SBIndex::SKILLPROC_SPELL_ID], other, EQ::spells::CastingSlot::Item, 0, -1,
-						  spells[aabonuses.SkillAttackProc[SBIndex::SKILLPROC_SPELL_ID]].ResistDiff);
+						  spells[aabonuses.SkillAttackProc[SBIndex::SKILLPROC_SPELL_ID]].resist_difficulty);
 	}
 
 	other->Damage(this, damage, SPELL_UNKNOWN, skillinuse);

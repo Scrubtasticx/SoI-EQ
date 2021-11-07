@@ -284,7 +284,7 @@ NPC::NPC(const NPCType *npc_type_data, Spawn2 *in_respawn, const glm::vec4 &posi
 	entity_list.MakeNameUnique(name);
 
 	npc_aggro = npc_type_data->npc_aggro;
-	
+
 	AISpellVar.fail_recast                     = static_cast<uint32>(RuleI(Spells, AI_SpellCastFinishedFailRecast));
 	AISpellVar.engaged_no_sp_recast_min        = static_cast<uint32>(RuleI(Spells, AI_EngagedNoSpellMinRecast));
 	AISpellVar.engaged_no_sp_recast_max        = static_cast<uint32>(RuleI(Spells, AI_EngagedNoSpellMaxRecast));
@@ -674,6 +674,75 @@ void NPC::QueryLoot(Client* to)
 	to->Message(Chat::White, "| %i Platinum %i Gold %i Silver %i Copper", platinum, gold, silver, copper);
 }
 
+bool NPC::HasItem(uint32 item_id) {
+	if (!database.GetItem(item_id)) {
+		return false;
+	}
+
+	for (auto current_item  = itemlist.begin(); current_item != itemlist.end(); ++current_item) {
+		ServerLootItem_Struct* loot_item = *current_item;
+		if (!loot_item) {
+			LogError("NPC::HasItem() - ItemList error, null item");
+			continue;
+		}
+
+		if (!loot_item->item_id || !database.GetItem(loot_item->item_id)) {
+			LogError("NPC::HasItem() - Database error, invalid item");
+			continue;
+		}
+
+		if (loot_item->item_id == item_id) {
+			return true;
+		}
+	}
+	return false;
+}
+
+uint16 NPC::CountItem(uint32 item_id) {
+	uint16 item_count = 0;
+	if (!database.GetItem(item_id)) {
+		return item_count;
+	}
+
+	for (auto current_item  = itemlist.begin(); current_item != itemlist.end(); ++current_item) {
+		ServerLootItem_Struct* loot_item = *current_item;
+		if (!loot_item) {
+			LogError("NPC::CountItem() - ItemList error, null item");
+			continue;
+		}
+
+		if (!loot_item->item_id || !database.GetItem(loot_item->item_id)) {
+			LogError("NPC::CountItem() - Database error, invalid item");
+			continue;
+		}
+
+		if (loot_item->item_id == item_id) {
+			item_count += loot_item->charges;
+		}
+	}
+	return item_count;
+}
+
+uint32 NPC::GetItemIDBySlot(uint16 loot_slot) {
+	for (auto current_item  = itemlist.begin(); current_item != itemlist.end(); ++current_item) {
+		ServerLootItem_Struct* loot_item = *current_item;
+		if (loot_item->lootslot == loot_slot) {
+			return loot_item->item_id;
+		}
+	}
+	return 0;
+}
+
+uint16 NPC::GetFirstSlotByItemID(uint32 item_id) {
+	for (auto current_item  = itemlist.begin(); current_item != itemlist.end(); ++current_item) {
+		ServerLootItem_Struct* loot_item = *current_item;
+		if (loot_item->item_id == item_id) {
+			return loot_item->lootslot;
+		}
+	}
+	return 0;
+}
+
 void NPC::AddCash(uint16 in_copper, uint16 in_silver, uint16 in_gold, uint16 in_platinum) {
 	if(in_copper >= 0)
 		copper = in_copper;
@@ -859,19 +928,8 @@ bool NPC::Process()
 		SendHPUpdate();
 	}
 
-	if(HasVirus()) {
-		if(viral_timer.Check()) {
-			viral_timer_counter++;
-			for(int i = 0; i < MAX_SPELL_TRIGGER*2; i+=2) {
-				if(viral_spells[i] && spells[viral_spells[i]].viral_timer > 0)	{
-					if(viral_timer_counter % spells[viral_spells[i]].viral_timer == 0) {
-						SpreadVirus(viral_spells[i], viral_spells[i+1]);
-					}
-				}
-			}
-		}
-		if(viral_timer_counter > 999)
-			viral_timer_counter = 0;
+	if (viral_timer.Check()) {
+		VirusEffectProcess();
 	}
 
 	if(spellbonuses.GravityEffect == 1) {
@@ -994,7 +1052,7 @@ void NPC::Depop(bool StartSpawnTimer) {
 
 bool NPC::DatabaseCastAccepted(int spell_id) {
 	for (int i=0; i < EFFECT_COUNT; i++) {
-		switch(spells[spell_id].effectid[i]) {
+		switch(spells[spell_id].effect_id[i]) {
 		case SE_Stamina: {
 			if(IsEngaged() && GetHPRatio() < 100)
 				return true;
@@ -1004,7 +1062,7 @@ bool NPC::DatabaseCastAccepted(int spell_id) {
 		}
 		case SE_CurrentHPOnce:
 		case SE_CurrentHP: {
-			if(this->GetHPRatio() < 100 && spells[spell_id].buffduration == 0)
+			if(this->GetHPRatio() < 100 && spells[spell_id].buff_duration == 0)
 				return true;
 			else
 				return false;
@@ -1037,7 +1095,7 @@ bool NPC::DatabaseCastAccepted(int spell_id) {
 			break;
 		}
 		default:
-			if(spells[spell_id].goodEffect == 1 && !(spells[spell_id].buffduration == 0 && this->GetHPRatio() == 100) && !IsEngaged())
+			if(spells[spell_id].good_effect == 1 && !(spells[spell_id].buff_duration == 0 && this->GetHPRatio() == 100) && !IsEngaged())
 				return true;
 			return false;
 		}
@@ -1055,7 +1113,7 @@ bool NPC::SpawnZoneController()
 	memset(npc_type, 0, sizeof(NPCType));
 
 	strncpy(npc_type->name, "zone_controller", 60);
-	npc_type->current_hp           = 2000000000;
+	npc_type->current_hp       = 2000000000;
 	npc_type->max_hp           = 2000000000;
 	npc_type->hp_regen         = 100000000;
 	npc_type->race             = 240;
@@ -1138,7 +1196,7 @@ void NPC::SpawnGridNodeNPC(const glm::vec4 &position, int32 grid_id, int32 grid_
 	entity_list.AddNPC(npc);
 }
 
-void NPC::SpawnZonePointNodeNPC(std::string name, const glm::vec4 &position)
+NPC * NPC::SpawnZonePointNodeNPC(std::string name, const glm::vec4 &position)
 {
 	auto npc_type = new NPCType;
 	memset(npc_type, 0, sizeof(NPCType));
@@ -1166,6 +1224,8 @@ void NPC::SpawnZonePointNodeNPC(std::string name, const glm::vec4 &position)
 	npc_type->show_name        = true;
 	npc_type->findable         = true;
 
+	strcpy(npc_type->special_abilities, "12,1^13,1^14,1^15,1^16,1^17,1^19,1^22,1^24,1^25,1^28,1^31,1^35,1^39,1^42,1");
+
 	auto node_position = glm::vec4(position.x, position.y, position.z, position.w);
 	auto npc           = new NPC(npc_type, nullptr, node_position, GravityBehavior::Flying);
 
@@ -1174,14 +1234,15 @@ void NPC::SpawnZonePointNodeNPC(std::string name, const glm::vec4 &position)
 	npc->GiveNPCTypeData(npc_type);
 
 	entity_list.AddNPC(npc);
+
+	return npc;
 }
 
 NPC * NPC::SpawnNodeNPC(std::string name, std::string last_name, const glm::vec4 &position) {
 	auto npc_type = new NPCType;
 	memset(npc_type, 0, sizeof(NPCType));
 
-	sprintf(npc_type->name, "%s", name.c_str());
-	sprintf(npc_type->lastname, "%s", last_name.c_str());
+	strncpy(npc_type->name, name.c_str(), 60);
 
 	npc_type->current_hp       = 4000000;
 	npc_type->max_hp           = 4000000;
@@ -1203,8 +1264,12 @@ NPC * NPC::SpawnNodeNPC(std::string name, std::string last_name, const glm::vec4
 	npc_type->findable         = true;
 	npc_type->runspeed         = 1.25;
 
+	strcpy(npc_type->special_abilities, "12,1^13,1^14,1^15,1^16,1^17,1^19,1^22,1^24,1^25,1^28,1^31,1^35,1^39,1^42,1");
+
 	auto node_position = glm::vec4(position.x, position.y, position.z, position.w);
 	auto npc           = new NPC(npc_type, nullptr, node_position, GravityBehavior::Flying);
+
+	npc->name[strlen(npc->name) - 3] = (char) NULL;
 
 	npc->GiveNPCTypeData(npc_type);
 
@@ -2263,6 +2328,10 @@ void NPC::PetOnSpawn(NewSpawn_Struct* ns)
 					strn0cpy(ns->spawn.lastName, tmp_lastname.c_str(), sizeof(ns->spawn.lastName));
 			}
 		}
+
+		if (swarmOwner->IsNPC()) {
+			SetPetOwnerNPC(true);
+		}
 	}
 	else if(GetOwnerID())
 	{
@@ -2277,6 +2346,13 @@ void NPC::PetOnSpawn(NewSpawn_Struct* ns)
 				tmp_lastname += "'s Pet";
 				if (tmp_lastname.size() < sizeof(ns->spawn.lastName))
 					strn0cpy(ns->spawn.lastName, tmp_lastname.c_str(), sizeof(ns->spawn.lastName));
+			}
+			else 
+			{
+				if (entity_list.GetNPCByID(GetOwnerID())) 
+				{
+					SetPetOwnerNPC(true);
+				}
 			}
 		}
 	}
@@ -3303,7 +3379,7 @@ void NPC::AIYellForHelp(Mob *sender, Mob *attacker)
 			 * if they are in range, make sure we are not green...
 			 * then jump in if they are our friend
 			 */
-			if (mob->GetLevel() >= 50 || attacker->GetLevelCon(mob->GetLevel()) != CON_GRAY) {
+			if (mob->GetLevel() >= 50 || mob->AlwaysAggro() || attacker->GetLevelCon(mob->GetLevel()) != CON_GRAY) {
 				if (mob->GetPrimaryFaction() == sender->CastToNPC()->GetPrimaryFaction()) {
 					const NPCFactionList *cf = content_db.GetNPCFactionEntry(mob->CastToNPC()->GetNPCFactionID());
 					if (cf) {
@@ -3397,4 +3473,22 @@ bool NPC::IsGuard()
 		return true;
 	}
 	return false;
+}
+
+std::vector<int> NPC::GetLootList() {
+	std::vector<int> npc_items;
+	for (auto current_item  = itemlist.begin(); current_item != itemlist.end(); ++current_item) {
+		ServerLootItem_Struct* loot_item = *current_item;
+		if (!loot_item) {
+			LogError("NPC::GetLootList() - ItemList error, null item");
+			continue;
+		}
+
+		if (std::find(npc_items.begin(), npc_items.end(), loot_item->item_id) != npc_items.end()) {
+			continue;
+		}
+		
+		npc_items.push_back(loot_item->item_id);
+	}
+	return npc_items;
 }

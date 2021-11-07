@@ -9,6 +9,11 @@ struct Lua_HateList;
 class Lua_Item;
 class Lua_ItemInst;
 class Lua_StatBonuses;
+#ifdef BOTS
+class Lua_Bot;
+#endif
+class Lua_NPC;
+class Lua_Client;
 
 namespace luabind {
 	struct scope;
@@ -205,6 +210,11 @@ public:
 	Lua_Mob GetHateTop();
 	Lua_Mob GetHateDamageTop(Lua_Mob other);
 	Lua_Mob GetHateRandom();
+#ifdef BOTS
+	Lua_Bot GetHateRandomBot();
+#endif
+	Lua_Client GetHateRandomClient();
+	Lua_NPC GetHateRandomNPC();
 	Lua_Mob GetHateClosest();
 	void AddToHateList(Lua_Mob other);
 	void AddToHateList(Lua_Mob other, int hate);
@@ -352,7 +362,7 @@ public:
 	void DelGlobal(const char *varname);
 	void SetSlotTint(int material_slot, int red_tint, int green_tint, int blue_tint);
 	void WearChange(int material_slot, int texture, uint32 color);
-	void DoKnockback(Lua_Mob caster, uint32 pushback, uint32 pushup);
+	void DoKnockback(Lua_Mob caster, uint32 push_back, uint32 push_up);
 	void AddNimbusEffect(int effect_id);
 	void RemoveNimbusEffect(int effect_id);
 	void RemoveAllNimbusEffects();
@@ -412,6 +422,8 @@ public:
 	bool HasOwner();
 	bool IsPet();
 	bool HasPet();
+	void RemovePet();
+	void SetPet(Lua_Mob new_pet);
 	bool IsSilenced();
 	bool IsAmnesiad();
 	int32 GetMeleeMitigation();

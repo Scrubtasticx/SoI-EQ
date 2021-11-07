@@ -63,7 +63,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include "worldserver.h"
 #include "zone.h"
 #include "mob_movement_manager.h"
+#include "../common/repositories/character_instance_safereturns_repository.h"
 #include "../common/repositories/criteria/content_filter_criteria.h"
+#include "../common/shared_tasks.h"
+#include "gm_commands/door_manipulation.h"
+#include "client.h"
+
 
 #ifdef BOTS
 #include "bot.h"
@@ -209,7 +214,7 @@ void MapOpcodes()
 	ConnectedOpcodes[OP_FeignDeath] = &Client::Handle_OP_FeignDeath;
 	ConnectedOpcodes[OP_FindPersonRequest] = &Client::Handle_OP_FindPersonRequest;
 	ConnectedOpcodes[OP_Fishing] = &Client::Handle_OP_Fishing;
-	ConnectedOpcodes[OP_FloatListThing] = &Client::Handle_OP_Ignore;
+	ConnectedOpcodes[OP_FloatListThing] = &Client::Handle_OP_MovementHistoryList;
 	ConnectedOpcodes[OP_Forage] = &Client::Handle_OP_Forage;
 	ConnectedOpcodes[OP_FriendsWho] = &Client::Handle_OP_FriendsWho;
 	ConnectedOpcodes[OP_GetGuildMOTD] = &Client::Handle_OP_GetGuildMOTD;
@@ -381,6 +386,7 @@ void MapOpcodes()
 	ConnectedOpcodes[OP_TargetCommand] = &Client::Handle_OP_TargetCommand;
 	ConnectedOpcodes[OP_TargetMouse] = &Client::Handle_OP_TargetMouse;
 	ConnectedOpcodes[OP_TaskHistoryRequest] = &Client::Handle_OP_TaskHistoryRequest;
+	ConnectedOpcodes[OP_TaskTimers] = &Client::Handle_OP_TaskTimers;
 	ConnectedOpcodes[OP_Taunt] = &Client::Handle_OP_Taunt;
 	ConnectedOpcodes[OP_TestBuff] = &Client::Handle_OP_TestBuff;
 	ConnectedOpcodes[OP_TGB] = &Client::Handle_OP_TGB;
@@ -413,6 +419,16 @@ void MapOpcodes()
 	ConnectedOpcodes[OP_YellForHelp] = &Client::Handle_OP_YellForHelp;
 	ConnectedOpcodes[OP_ZoneChange] = &Client::Handle_OP_ZoneChange;
 	ConnectedOpcodes[OP_ResetAA] = &Client::Handle_OP_ResetAA;
+	ConnectedOpcodes[OP_UnderWorld] = &Client::Handle_OP_UnderWorld;
+
+	// shared tasks
+	ConnectedOpcodes[OP_SharedTaskRemovePlayer]   = &Client::Handle_OP_SharedTaskRemovePlayer;
+	ConnectedOpcodes[OP_SharedTaskAddPlayer]      = &Client::Handle_OP_SharedTaskAddPlayer;
+	ConnectedOpcodes[OP_SharedTaskMakeLeader]     = &Client::Handle_OP_SharedTaskMakeLeader;
+	ConnectedOpcodes[OP_SharedTaskInviteResponse] = &Client::Handle_OP_SharedTaskInviteResponse;
+	ConnectedOpcodes[OP_SharedTaskAcceptNew]      = &Client::Handle_OP_SharedTaskAccept;
+	ConnectedOpcodes[OP_SharedTaskQuit]           = &Client::Handle_OP_SharedTaskQuit;
+	ConnectedOpcodes[OP_SharedTaskPlayerList]     = &Client::Handle_OP_SharedTaskPlayerList;
 }
 
 void ClearMappedOpcode(EmuOpcode op)
@@ -525,6 +541,9 @@ void Client::CompleteConnect()
 	/* Sets GM Flag if needed & Sends Petition Queue */
 	UpdateAdmin(false);
 
+	// Task Packets
+	LoadClientTaskState();
+
 	if (IsInAGuild()) {
 		uint8 rank = GuildRank();
 		if (ClientVersion() >= EQ::versions::ClientVersion::RoF)
@@ -632,31 +651,30 @@ void Client::CompleteConnect()
 		}
 
 		for (int x1 = 0; x1 < EFFECT_COUNT; x1++) {
-			switch (spell.effectid[x1]) {
+			switch (spell.effect_id[x1]) {
 			case SE_IllusionCopy:
 			case SE_Illusion: {
-				if (spell.base[x1] == -1) {
+				if (spell.base_value[x1] == -1) {
 					if (gender == 1)
 						gender = 0;
 					else if (gender == 0)
 						gender = 1;
 					SendIllusionPacket(GetRace(), gender, 0xFF, 0xFF);
 				}
-				else if (spell.base[x1] == -2) // WTF IS THIS
+				else if (spell.base_value[x1] == -2) // WTF IS THIS
 				{
 					if (GetRace() == 128 || GetRace() == 130 || GetRace() <= 12)
-						SendIllusionPacket(GetRace(), GetGender(), spell.base2[x1], spell.max[x1]);
+						SendIllusionPacket(GetRace(), GetGender(), spell.limit_value[x1], spell.max_value[x1]);
 				}
-				else if (spell.max[x1] > 0)
+				else if (spell.max_value[x1] > 0)
 				{
-					//SendIllusionPacket(spell.base[x1], 0xFF, spell.base2[x1], spell.max[x1]);
-					SendIllusionPacket(spell.base[x1], spell.max[x1] - 1, spell.base2[x1], 0xFF);
+					SendIllusionPacket(spell.base_value[x1], 0xFF, spell.limit_value[x1], spell.max_value[x1]);
 				}
 				else
 				{
-					SendIllusionPacket(spell.base[x1], 0xFF, 0xFF, 0xFF);
+					SendIllusionPacket(spell.base_value[x1], 0xFF, 0xFF, 0xFF);
 				}
-				switch (spell.base[x1]) {
+				switch (spell.base_value[x1]) {
 				case OGRE:
 					SendAppearancePacket(AT_Size, 9);
 					break;
@@ -743,17 +761,17 @@ void Client::CompleteConnect()
 			case SE_AddMeleeProc:
 			case SE_WeaponProc:
 			{
-				AddProcToWeapon(GetProcID(buffs[j1].spellid, x1), false, 100 + spells[buffs[j1].spellid].base2[x1], buffs[j1].spellid, buffs[j1].casterlevel);
+				AddProcToWeapon(GetProcID(buffs[j1].spellid, x1), false, 100 + spells[buffs[j1].spellid].limit_value[x1], buffs[j1].spellid, buffs[j1].casterlevel, GetProcLimitTimer(buffs[j1].spellid, SE_WeaponProc));
 				break;
 			}
 			case SE_DefensiveProc:
 			{
-				AddDefensiveProc(GetProcID(buffs[j1].spellid, x1), 100 + spells[buffs[j1].spellid].base2[x1], buffs[j1].spellid);
+				AddDefensiveProc(GetProcID(buffs[j1].spellid, x1), 100 + spells[buffs[j1].spellid].limit_value[x1], buffs[j1].spellid, GetProcLimitTimer(buffs[j1].spellid, SE_DefensiveProc));
 				break;
 			}
 			case SE_RangedProc:
 			{
-				AddRangedProc(GetProcID(buffs[j1].spellid, x1), 100 + spells[buffs[j1].spellid].base2[x1], buffs[j1].spellid);
+				AddRangedProc(GetProcID(buffs[j1].spellid, x1), 100 + spells[buffs[j1].spellid].limit_value[x1], buffs[j1].spellid, GetProcLimitTimer(buffs[j1].spellid, SE_RangedProc));
 				break;
 			}
 			}
@@ -902,7 +920,7 @@ void Client::CompleteConnect()
 		guild_mgr.RequestOnlineGuildMembers(this->CharacterID(), this->GuildID());
 	}
 
-	UpdateExpeditionInfoAndLockouts();
+	SendDynamicZoneUpdates();
 
 	/** Request adventure info **/
 	auto pack = new ServerPacket(ServerOP_AdventureDataRequest, 64);
@@ -943,6 +961,25 @@ void Client::CompleteConnect()
 		ShowDevToolsMenu();
 	}
 
+	// shared tasks memberlist
+	if (RuleB(TaskSystem, EnableTaskSystem) && GetTaskState()->HasActiveSharedTask()) {
+
+		// struct
+		auto p = new ServerPacket(
+			ServerOP_SharedTaskRequestMemberlist,
+			sizeof(ServerSharedTaskRequestMemberlist_Struct)
+		);
+
+		auto *r = (ServerSharedTaskRequestMemberlist_Struct *) p->pBuffer;
+
+		// fill
+		r->source_character_id = CharacterID();
+		r->task_id             = GetTaskState()->GetActiveSharedTask().task_id;
+
+		// send
+		worldserver.SendPacket(p);
+		safe_delete(p);
+	}
 }
 
 // connecting opcode handlers
@@ -1224,11 +1261,8 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 
 	uint32 pplen = 0;
 	EQApplicationPacket* outapp = nullptr;
-	MYSQL_RES* result = nullptr;
 	bool loaditems = 0;
-	uint32 i;
 	std::string query;
-	unsigned long* lengths = nullptr;
 
 	uint32 cid = CharacterID();
 	character_id = cid; /* Global character_id reference */
@@ -1271,7 +1305,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 		m_pp.platinum_shared = database.GetSharedPlatinum(this->AccountID());
 
 	database.ClearOldRecastTimestamps(cid); /* Clear out our old recast timestamps to keep the DB clean */
-	// set to full support in case they're a gm with items in disabled expansion slots..but, have their gm flag off...
+	// set to full support in case they're a gm with items in disabled expansion slots...but, have their gm flag off...
 	// item loss will occur when they use the 'empty' slots, if this is not done
 	m_inv.SetGMInventory(true);
 	loaditems = database.GetInventory(cid, &m_inv); /* Load Character Inventory */
@@ -1479,7 +1513,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 				m_pp.buffs[i].unknown003 = 0;
 				m_pp.buffs[i].duration = buffs[i].ticsremaining;
 				m_pp.buffs[i].counters = buffs[i].counters;
-				m_pp.buffs[i].num_hits = buffs[i].numhits;
+				m_pp.buffs[i].num_hits = buffs[i].hit_number;
 			}
 			else {
 				m_pp.buffs[i].spellid = SPELLBOOK_UNKNOWN;
@@ -1663,8 +1697,9 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 		m_petinfo.SpellID = 0;
 	}
 	/* Moved here so it's after where we load the pet data. */
-	if (!GetAA(aaPersistentMinion))
+	if (!aabonuses.ZoneSuspendMinion && !spellbonuses.ZoneSuspendMinion && !itembonuses.ZoneSuspendMinion) {
 		memset(&m_suspendedminion, 0, sizeof(PetInfo));
+	}
 
 	/* Server Zone Entry Packet */
 	outapp = new EQApplicationPacket(OP_ZoneEntry, sizeof(ServerZoneEntry_Struct));
@@ -1700,12 +1735,12 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 	Character Inventory Packet
 	this is not quite where live sends inventory, they do it after tribute
 	*/
-	if (loaditems) { /* Dont load if a length error occurs */
+	if (loaditems) { /* Don't load if a length error occurs */
 		if (admin >= minStatusToBeGM)
 			m_inv.SetGMInventory(true); // set to true to allow expansion-restricted packets through
 
 		BulkSendInventoryItems();
-		/* Send stuff on the cursor which isnt sent in bulk */
+		/* Send stuff on the cursor which isn't sent in bulk */
 		for (auto iter = m_inv.cursor_cbegin(); iter != m_inv.cursor_cend(); ++iter) {
 			/* First item cursor is sent in bulk inventory packet */
 			if (iter == m_inv.cursor_cbegin())
@@ -1718,12 +1753,40 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 		m_inv.SetGMInventory((bool)m_pp.gm); // reset back to current gm state
 	}
 
-	/* Task Packets */
-	LoadClientTaskState();
-
 	ApplyWeaponsStance();
 
+	auto dynamic_zone_member_entries = DynamicZoneMembersRepository::GetWhere(database,
+		fmt::format("character_id = {}", CharacterID()));
+
+	for (const auto& entry : dynamic_zone_member_entries)
+	{
+		m_dynamic_zone_ids.emplace_back(entry.dynamic_zone_id);
+	}
+
 	m_expedition_id = ExpeditionsRepository::GetIDByMemberID(database, CharacterID());
+
+	auto dz = zone->GetDynamicZone();
+	if (dz && dz->GetSafeReturnLocation().zone_id != 0)
+	{
+		auto safereturn = dz->GetSafeReturnLocation();
+
+		auto safereturn_entry = CharacterInstanceSafereturnsRepository::NewEntity();
+		safereturn_entry.character_id     = CharacterID();
+		safereturn_entry.instance_zone_id = zone->GetZoneID();
+		safereturn_entry.instance_id      = zone->GetInstanceID();
+		safereturn_entry.safe_zone_id     = safereturn.zone_id;
+		safereturn_entry.safe_x           = safereturn.x;
+		safereturn_entry.safe_y           = safereturn.y;
+		safereturn_entry.safe_z           = safereturn.z;
+		safereturn_entry.safe_heading     = safereturn.heading;
+
+		CharacterInstanceSafereturnsRepository::InsertOneOrUpdate(database, safereturn_entry);
+	}
+	else
+	{
+		CharacterInstanceSafereturnsRepository::DeleteWhere(database,
+			fmt::format("character_id = {}", character_id));
+	}
 
 	/**
 	 * DevTools Load Settings
@@ -1744,7 +1807,7 @@ void Client::Handle_Connect_OP_ZoneEntry(const EQApplicationPacket *app)
 
 	/*
 	Weather Packet
-	This shouldent be moved, this seems to be what the client
+	This shouldn't be moved, this seems to be what the client
 	uses to advance to the next state (sending ReqNewZone)
 	*/
 	outapp = new EQApplicationPacket(OP_Weather, 12);
@@ -1830,7 +1893,7 @@ void Client::Handle_OP_AcceptNewTask(const EQApplicationPacket *app)
 	AcceptNewTask_Struct *ant = (AcceptNewTask_Struct*)app->pBuffer;
 
 	if (ant->task_id > 0 && RuleB(TaskSystem, EnableTaskSystem) && task_state)
-		task_state->AcceptNewTask(this, ant->task_id, ant->task_master_id);
+		task_state->AcceptNewTask(this, ant->task_id, ant->task_master_id, std::time(nullptr));
 }
 
 void Client::Handle_OP_AdventureInfoRequest(const EQApplicationPacket *app)
@@ -1919,136 +1982,136 @@ void Client::Handle_OP_AdventureMerchantPurchase(const EQApplicationPacket *app)
 
 	const EQ::ItemData* item = nullptr;
 	bool found = false;
-	std::list<MerchantList> merlist = zone->merchanttable[merchantid];
-	std::list<MerchantList>::const_iterator itr;
-
-	for (itr = merlist.begin(); itr != merlist.end(); ++itr) {
-		MerchantList ml = *itr;
-		if (GetLevel() < ml.level_required) {
+	std::list<MerchantList> merchantlists = zone->merchanttable[merchantid];
+	for (auto merchantlist : merchantlists) {
+		if (GetLevel() < merchantlist.level_required) {
 			continue;
 		}
 
-		int32 fac = tmp->GetPrimaryFaction();
-		if (fac != 0 && GetModCharacterFactionLevel(fac) < ml.faction_required) {
+		int faction_id = tmp->GetPrimaryFaction();
+		if (faction_id != 0 && GetModCharacterFactionLevel(faction_id) < merchantlist.faction_required) {
 			continue;
 		}
 
-		item = database.GetItem(ml.item);
-		if (!item)
+		item = database.GetItem(merchantlist.item);
+		if (!item) {
 			continue;
+		}
+
 		if (item->ID == aps->itemid) { //This check to make sure that the item is actually on the NPC, people attempt to inject packets to get items summoned...
 			found = true;
 			break;
 		}
 	}
+
 	if (!item || !found) {
 		Message(Chat::Red, "Error: The item you purchased does not exist!");
 		return;
 	}
 
-	if (aps->Type == LDoNMerchant)
-	{
-		if (m_pp.ldon_points_available < int32(item->LDoNPrice)) {
+	auto item_cost = item->LDoNPrice;
+	bool cannot_afford = false;
+	std::string merchant_type;
+	if (item_cost < 0) {
+		Message(Chat::Red, "This item cannot be bought.");
+		return;
+	}
+
+	if (aps->Type == LDoNMerchant) {
+		if (m_pp.ldon_points_available < item_cost) {
 			Message(Chat::Red, "You cannot afford that item.");
 			return;
 		}
 
-		if (item->LDoNTheme <= 16)
-		{
-			if (item->LDoNTheme & 16)
-			{
-				if (m_pp.ldon_points_tak < int32(item->LDoNPrice))
-				{
-					Message(Chat::Red, "You need at least %u points in tak to purchase this item.", int32(item->LDoNPrice));
-					return;
+		if (item->LDoNTheme <= LDoNThemeBits::TAKBit) {
+			if (item->LDoNTheme & LDoNThemeBits::TAKBit) {
+				if (m_pp.ldon_points_tak < item_cost) {
+					cannot_afford = true;
+					merchant_type = fmt::format("Deepest Guk Point{}", item_cost != 1 ? "s" : "");
+				}
+			} else if (item->LDoNTheme & LDoNThemeBits::RUJBit) {
+				if (m_pp.ldon_points_ruj < item_cost) {
+					cannot_afford = true;
+					merchant_type = fmt::format("Miragul's Menagerie Point{}", item_cost != 1 ? "s" : "");
+				}
+			} else if (item->LDoNTheme & LDoNThemeBits::MMCBit) {
+				if (m_pp.ldon_points_mmc < item_cost) {
+					cannot_afford = true;
+					merchant_type = fmt::format("Mistmoore Catacombs Point{}", item_cost != 1 ? "s" : "");
+				}
+			} else if (item->LDoNTheme & LDoNThemeBits::MIRBit) {
+				if (m_pp.ldon_points_mir < item_cost) {
+					cannot_afford = true;
+					merchant_type = fmt::format("Rujarkian Hills Point{}", item_cost != 1 ? "s" : "");
+				}
+			} else if (item->LDoNTheme & LDoNThemeBits::GUKBit) {
+				if (m_pp.ldon_points_guk < item_cost) {
+					cannot_afford = true;
+					merchant_type = fmt::format("Takish-Hiz Point{}", item_cost != 1 ? "s" : "");
 				}
 			}
-			else if (item->LDoNTheme & 8)
-			{
-				if (m_pp.ldon_points_ruj < int32(item->LDoNPrice))
-				{
-					Message(Chat::Red, "You need at least %u points in ruj to purchase this item.", int32(item->LDoNPrice));
-					return;
-				}
-			}
-			else if (item->LDoNTheme & 4)
-			{
-				if (m_pp.ldon_points_mmc < int32(item->LDoNPrice))
-				{
-					Message(Chat::Red, "You need at least %u points in mmc to purchase this item.", int32(item->LDoNPrice));
-					return;
-				}
-			}
-			else if (item->LDoNTheme & 2)
-			{
-				if (m_pp.ldon_points_mir < int32(item->LDoNPrice))
-				{
-					Message(Chat::Red, "You need at least %u points in mir to purchase this item.", int32(item->LDoNPrice));
-					return;
-				}
-			}
-			else if (item->LDoNTheme & 1)
-			{
-				if (m_pp.ldon_points_guk < int32(item->LDoNPrice))
-				{
-					Message(Chat::Red, "You need at least %u points in guk to purchase this item.", int32(item->LDoNPrice));
-					return;
-				}
-			}
+
+
+		}
+	} else if (aps->Type == DiscordMerchant) {
+		if (GetPVPPoints() < item_cost) {
+			cannot_afford = true;
+			merchant_type = fmt::format("PVP Point{}", item_cost != 1 ? "s" : "");
+		}
+	} else if (aps->Type == NorrathsKeepersMerchant) {
+		if (GetRadiantCrystals() < item_cost) {
+			cannot_afford = true;
+			merchant_type = database.CreateItemLink(RuleI(Zone, RadiantCrystalItemID));
+		}
+	} else if (aps->Type == DarkReignMerchant) {
+		if (GetEbonCrystals() < item_cost) {
+			cannot_afford = true;
+			merchant_type = database.CreateItemLink(RuleI(Zone, EbonCrystalItemID));
+		}
+	} else {
+		Message(Chat::Red, "Unknown Adventure Merchant Type.");
+		return;
+	}
+
+	if (cannot_afford && !merchant_type.empty()) {
+		Message(
+			Chat::Red,
+			fmt::format(
+				"You need at least {} {} to purchase this item.",
+				item_cost,
+				merchant_type
+			).c_str()
+		);
+	}
+
+
+	if (CheckLoreConflict(item)) {
+		Message(
+			Chat::Yellow,
+			fmt::format(
+				"You already have a lore {} ({}) in your inventory.",
+				database.CreateItemLink(item->ID),
+				item->ID
+			).c_str()
+		);
+		return;
+	}
+
+	if (aps->Type == LDoNMerchant) {
+		int required_points = item_cost * -1;
+
+		if (!UpdateLDoNPoints(6, required_points)) {
+			return;
 		}
 	}
 	else if (aps->Type == DiscordMerchant)
 	{
-		if (GetPVPPoints() < item->LDoNPrice)
-		{
-			Message(Chat::Red, "You need at least %u PVP points to purchase this item.", int32(item->LDoNPrice));
-			return;
-		}
-	}
-	else if (aps->Type == NorrathsKeepersMerchant)
-	{
-		if (GetRadiantCrystals() < item->LDoNPrice)
-		{
-			Message(Chat::Red, "You need at least %u Radiant Crystals to purchase this item.", int32(item->LDoNPrice));
-			return;
-		}
-	}
-	else if (aps->Type == DarkReignMerchant)
-	{
-		if (GetEbonCrystals() < item->LDoNPrice)
-		{
-			Message(Chat::Red, "You need at least %u Ebon Crystals to purchase this item.", int32(item->LDoNPrice));
-			return;
-		}
-	}
-	else
-	{
-		Message(Chat::Red, "Unknown Adventure Merchant type.");
-		return;
-	}
-
-
-	if (CheckLoreConflict(item))
-	{
-		Message(Chat::Yellow, "You can only have one of a lore item.");
-		return;
-	}
-
-	if (aps->Type == LDoNMerchant)
-	{
-		int32 requiredpts = (int32)item->LDoNPrice*-1;
-
-		if (!UpdateLDoNPoints(6, requiredpts))
-			return;
-	}
-	else if (aps->Type == DiscordMerchant)
-	{
-		SetPVPPoints(GetPVPPoints() - (int32)item->LDoNPrice);
+		SetPVPPoints(GetPVPPoints() - item_cost);
 		SendPVPStats();
 	}
 	else if (aps->Type == NorrathsKeepersMerchant)
 	{
-		SetRadiantCrystals(GetRadiantCrystals() - (int32)item->LDoNPrice);
+		SetRadiantCrystals(GetRadiantCrystals() - item_cost);
 	}
 	else if (aps->Type == DarkReignMerchant)
 	{
@@ -2105,36 +2168,20 @@ void Client::Handle_OP_AdventureMerchantRequest(const EQApplicationPacket *app)
 		}
 
 		item = database.GetItem(ml.item);
-		if (item)
-		{
-			uint32 theme;
-			if (item->LDoNTheme > 16)
-			{
-				theme = 0;
-			}
-			else if (item->LDoNTheme & 16)
-			{
-				theme = 5;
-			}
-			else if (item->LDoNTheme & 8)
-			{
-				theme = 4;
-			}
-			else if (item->LDoNTheme & 4)
-			{
-				theme = 3;
-			}
-			else if (item->LDoNTheme & 2)
-			{
-				theme = 2;
-			}
-			else if (item->LDoNTheme & 1)
-			{
-				theme = 1;
-			}
-			else
-			{
-				theme = 0;
+		if (item) {
+			uint32 theme = LDoNThemes::Unused;
+			if (item->LDoNTheme > LDoNThemeBits::TAKBit) {
+				theme = LDoNThemes::Unused;
+			} else if (item->LDoNTheme & LDoNThemeBits::TAKBit) {
+				theme = LDoNThemes::TAK;
+			} else if (item->LDoNTheme & LDoNThemeBits::RUJBit) {
+				theme = LDoNThemes::RUJ;
+			} else if (item->LDoNTheme & LDoNThemeBits::MMCBit) {
+				theme = LDoNThemes::MMC;
+			} else if (item->LDoNTheme & LDoNThemeBits::RUJBit) {
+				theme = LDoNThemes::MIR;
+			} else if (item->LDoNTheme & LDoNThemeBits::GUKBit) {
+				theme = LDoNThemes::GUK;
 			}
 			ss << "^" << item->Name << "|";
 			ss << item->ID << "|";
@@ -2925,6 +2972,7 @@ void Client::Handle_OP_Assist(const EQApplicationPacket *app)
 			Mob *new_target = assistee->GetTarget();
 			if (new_target && (GetGM() ||
 				Distance(m_Position, assistee->GetPosition()) <= TARGETING_RANGE)) {
+				cheat_manager.SetExemptStatus(Assist, true);
 				eid->entity_id = new_target->GetID();
 			} else {
 				eid->entity_id = 0;
@@ -3911,7 +3959,7 @@ void Client::Handle_OP_Buff(const EQApplicationPacket *app)
 	//something about IsDetrimentalSpell() crashes this portion of code..
 	//tbh we shouldn't use it anyway since this is a simple red vs blue buff check and
 	//isdetrimentalspell() is much more complex
-	if (spid == 0xFFFF || (IsValidSpell(spid) && (spells[spid].goodEffect == 0)))
+	if (spid == 0xFFFF || (IsValidSpell(spid) && (spells[spid].good_effect == 0)))
 		QueuePacket(app);
 	else
 		BuffFadeBySpellID(spid);
@@ -4295,12 +4343,24 @@ void Client::Handle_OP_ClickDoor(const EQApplicationPacket *app)
 		return;
 	}
 
-	char buf[20];
-	snprintf(buf, 19, "%u", cd->doorid);
-	buf[19] = '\0';
+	// set door selected
+	if (IsDevToolsEnabled()) {
+		SetDoorToolEntityId(currentdoor->GetEntityID());
+		DoorManipulation::CommandHeader(this);
+		Message(
+			Chat::White,
+			fmt::format(
+				"Door ({}) [{}]",
+				currentdoor->GetEntityID(),
+				EQ::SayLinkEngine::GenerateQuestSaylink("#door edit", false, "#door edit")
+			).c_str()
+		);
+	}
+
+	std::string export_string = fmt::format("{}", cd->doorid);
 	std::vector<EQ::Any> args;
 	args.push_back(currentdoor);
-	parse->EventPlayer(EVENT_CLICK_DOOR, this, buf, 0, &args);
+	parse->EventPlayer(EVENT_CLICK_DOOR, this, export_string, 0, &args);
 
 	currentdoor->HandleClick(this, 0);
 	return;
@@ -4324,10 +4384,8 @@ void Client::Handle_OP_ClickObject(const EQApplicationPacket *app)
 		std::vector<EQ::Any> args;
 		args.push_back(object);
 
-		char buf[10];
-		snprintf(buf, 9, "%u", click_object->drop_id);
-		buf[9] = '\0';
-		parse->EventPlayer(EVENT_CLICK_OBJECT, this, buf, GetID(), &args);
+		std::string export_string = fmt::format("{}", click_object->drop_id);
+		parse->EventPlayer(EVENT_CLICK_OBJECT, this, export_string, GetID(), &args);
 	}
 
 	// Observed in RoF after OP_ClickObjectAction:
@@ -4491,7 +4549,7 @@ void Client::Handle_OP_ClientUpdate(const EQApplicationPacket *app) {
 			double cosine = std::cos(thetar);
 			double sine = std::sin(thetar);
 
-			double normalizedx, normalizedy;	
+			double normalizedx, normalizedy;
 			normalizedx = cx * cosine - -cy * sine;
 			normalizedy = -cx * sine + cy * cosine;
 
@@ -4502,6 +4560,8 @@ void Client::Handle_OP_ClientUpdate(const EQApplicationPacket *app) {
 			new_heading += boat->GetHeading();
 		}
 	}
+
+	cheat_manager.MovementCheck(glm::vec3(cx, cy, cz));
 
 	if (IsDraggingCorpse())
 		DragCorpses();
@@ -4776,6 +4836,11 @@ void Client::Handle_OP_Consider(const EQApplicationPacket *app)
 	if (tmob == 0)
 		return;
 
+	std::string export_string = fmt::format("{}", conin->targetid);
+	if (parse->EventPlayer(EVENT_CONSIDER, this, export_string, 0) == 1) {
+		return;
+	}
+
 	if (tmob->GetClass() == LDON_TREASURE)
 	{
 		Message(Chat::Yellow, "%s", tmob->GetCleanName());
@@ -4898,7 +4963,12 @@ void Client::Handle_OP_ConsiderCorpse(const EQApplicationPacket *app)
 	}
 	Consider_Struct* conin = (Consider_Struct*)app->pBuffer;
 	Corpse* tcorpse = entity_list.GetCorpseByID(conin->targetid);
+	std::string export_string = fmt::format("{}", conin->targetid);
 	if (tcorpse && tcorpse->IsNPCCorpse()) {
+		if (parse->EventPlayer(EVENT_CONSIDER_CORPSE, this, export_string, 0) == 1) {
+			return;
+		}
+
 		uint32 min; uint32 sec; uint32 ttime;
 		if ((ttime = tcorpse->GetDecayTime()) != 0) {
 			sec = (ttime / 1000) % 60; // Total seconds
@@ -4912,6 +4982,10 @@ void Client::Handle_OP_ConsiderCorpse(const EQApplicationPacket *app)
 		}
 	}
 	else if (tcorpse && tcorpse->IsPlayerCorpse()) {
+		if (parse->EventPlayer(EVENT_CONSIDER_CORPSE, this, export_string, 0) == 1) {
+			return;
+		}
+
 		uint32 day, hour, min, sec, ttime;
 		if ((ttime = tcorpse->GetDecayTime()) != 0) {
 			sec = (ttime / 1000) % 60; // Total seconds
@@ -4926,22 +5000,6 @@ void Client::Handle_OP_ConsiderCorpse(const EQApplicationPacket *app)
 				Message(0, "This corpse will decay in %i minutes and %i seconds.", min, sec);
 
 			Message(0, "This corpse %s be resurrected.", tcorpse->IsRezzed() ? "cannot" : "can");
-			/*
-			hour = 0;
-
-			if((ttime = tcorpse->GetResTime()) != 0) {
-			sec = (ttime/1000)%60; // Total seconds
-			min = (ttime/60000)%60; // Total seconds
-			hour = (ttime/3600000)%24; // Total hours
-			if(hour)
-			Message(0, "This corpse can be resurrected for %i hours, %i minutes and %i seconds.", hour, min, sec);
-			else
-			Message(0, "This corpse can be resurrected for %i minutes and %i seconds.", min, sec);
-			}
-			else {
-			MessageString(Chat::White, CORPSE_TOO_OLD);
-			}
-			*/
 		}
 		else {
 			MessageString(Chat::NPCQuestSay, CORPSE_DECAY_NOW);
@@ -5871,9 +5929,13 @@ void Client::Handle_OP_EnvDamage(const EQApplicationPacket *app)
 
 		/* EVENT_ENVIRONMENTAL_DAMAGE */
 		int final_damage = (damage * RuleR(Character, EnvironmentDamageMulipliter));
-		char buf[24];
-		snprintf(buf, 23, "%u %u %i", ed->damage, ed->dmgtype, final_damage);
-		parse->EventPlayer(EVENT_ENVIRONMENTAL_DAMAGE, this, buf, 0);
+		std::string export_string = fmt::format(
+			"{} {} {}",
+			ed->damage,
+			ed->dmgtype,
+			final_damage
+		);
+		parse->EventPlayer(EVENT_ENVIRONMENTAL_DAMAGE, this, export_string, 0);
 	}
 
 	if (GetHP() <= 0) {
@@ -8482,18 +8544,18 @@ void Client::Handle_OP_ItemLinkClick(const EQApplicationPacket *app)
 
 			if (GetTarget() && GetTarget()->IsNPC()) {
 				if (silentsaylink) {
-					parse->EventNPC(EVENT_SAY, GetTarget()->CastToNPC(), this, response.c_str(), 0);
+					parse->EventNPC(EVENT_SAY, GetTarget()->CastToNPC(), this, response, 0);
 
 					if (response[0] == '#' && parse->PlayerHasQuestSub(EVENT_COMMAND)) {
-						parse->EventPlayer(EVENT_COMMAND, this, response.c_str(), 0);
+						parse->EventPlayer(EVENT_COMMAND, this, response, 0);
 					}
 #ifdef BOTS
 					else if (response[0] == '^' && parse->PlayerHasQuestSub(EVENT_BOT_COMMAND)) {
-						parse->EventPlayer(EVENT_BOT_COMMAND, this, response.c_str(), 0);
+						parse->EventPlayer(EVENT_BOT_COMMAND, this, response, 0);
 					}
 #endif
 					else {
-						parse->EventPlayer(EVENT_SAY, this, response.c_str(), 0);
+						parse->EventPlayer(EVENT_SAY, this, response, 0);
 					}
 				}
 				else {
@@ -8505,15 +8567,15 @@ void Client::Handle_OP_ItemLinkClick(const EQApplicationPacket *app)
 			else {
 				if (silentsaylink) {
 					if (response[0] == '#' && parse->PlayerHasQuestSub(EVENT_COMMAND)) {
-						parse->EventPlayer(EVENT_COMMAND, this, response.c_str(), 0);
+						parse->EventPlayer(EVENT_COMMAND, this, response, 0);
 					}
 #ifdef BOTS
 					else if (response[0] == '^' && parse->PlayerHasQuestSub(EVENT_BOT_COMMAND)) {
-						parse->EventPlayer(EVENT_BOT_COMMAND, this, response.c_str(), 0);
+						parse->EventPlayer(EVENT_BOT_COMMAND, this, response, 0);
 					}
 #endif
 					else {
-						parse->EventPlayer(EVENT_SAY, this, response.c_str(), 0);
+						parse->EventPlayer(EVENT_SAY, this, response, 0);
 					}
 				}
 				else {
@@ -8768,6 +8830,7 @@ void Client::Handle_OP_ItemVerifyRequest(const EQApplicationPacket *app)
 	slot_id = request->slot;
 	target_id = request->target;
 
+	cheat_manager.ProcessItemVerifyRequest(request->slot, request->target);
 
 	EQApplicationPacket *outapp = nullptr;
 	outapp = new EQApplicationPacket(OP_ItemVerifyReply, sizeof(ItemVerifyReply_Struct));
@@ -8817,7 +8880,7 @@ void Client::Handle_OP_ItemVerifyRequest(const EQApplicationPacket *app)
 				IsFeared() ||
 				IsMezzed() ||
 				DivineAura() ||
-				(spells[spell_id].targettype == ST_Ring) ||
+				(spells[spell_id].target_type == ST_Ring) ||
 				(IsSilenced() && !IsDiscipline(spell_id)) ||
 				(IsAmnesiad() && IsDiscipline(spell_id)) ||
 				(IsDetrimentalSpell(spell_id) && !zone->CanDoCombat()) ||
@@ -8830,7 +8893,7 @@ void Client::Handle_OP_ItemVerifyRequest(const EQApplicationPacket *app)
 	}
 
 	// Modern clients don't require pet targeted for item clicks that are ST_Pet
-	if (spell_id > 0 && (spells[spell_id].targettype == ST_Pet || spells[spell_id].targettype == ST_SummonedPet))
+	if (spell_id > 0 && (spells[spell_id].target_type == ST_Pet || spells[spell_id].target_type == ST_SummonedPet))
 		target_id = GetPetID();
 
 	LogDebug("OP ItemVerifyRequest: spell=[{}], target=[{}], inv=[{}]", spell_id, target_id, slot_id);
@@ -9039,9 +9102,9 @@ void Client::Handle_OP_KickPlayers(const EQApplicationPacket *app)
 			expedition->DzKickPlayers(this);
 		}
 	}
-	else if (buf->kick_task)
+	else if (buf->kick_task && GetTaskState() && GetTaskState()->HasActiveSharedTask())
 	{
-		// todo: shared tasks
+		GetTaskState()->KickPlayersSharedTask(this);
 	}
 }
 
@@ -9617,6 +9680,7 @@ return;
 
 void Client::Handle_OP_MemorizeSpell(const EQApplicationPacket *app)
 {
+	cheat_manager.CheckMemTimer();
 	OPMemorizeSpell(app);
 	return;
 }
@@ -11067,6 +11131,7 @@ void Client::Handle_OP_PopupResponse(const EQApplicationPacket *app)
 	/**
 	 * Handle any EQEmu defined popup Ids first
 	 */
+	std::string response;
 	switch (popup_response->popupid) {
 		case POPUPID_UPDATE_SHOWSTATSWINDOW:
 			if (GetTarget() && GetTarget()->IsClient()) {
@@ -11078,6 +11143,24 @@ void Client::Handle_OP_PopupResponse(const EQApplicationPacket *app)
 			return;
 			break;
 
+		case POPUPID_DIAWIND_ONE:
+			if (EntityVariableExists(DIAWIND_RESPONSE_ONE_KEY.c_str())) {
+				response = GetEntityVariable(DIAWIND_RESPONSE_ONE_KEY.c_str());
+				if (!response.empty()) {
+					ChannelMessageReceived(8, 0, 100, response.c_str());
+				}
+			}
+			break;
+
+		case POPUPID_DIAWIND_TWO:
+			if (EntityVariableExists(DIAWIND_RESPONSE_TWO_KEY.c_str())) {
+				response = GetEntityVariable(DIAWIND_RESPONSE_TWO_KEY.c_str());
+				if (!response.empty()) {
+					ChannelMessageReceived(8, 0, 100, response.c_str());
+				}
+			}
+			break;
+
 		case EQ::popupresponse::MOB_INFO_DISMISS:
 			SetDisplayMobInfoWindow(false);
 			Message(Chat::Yellow, "[DevTools] Window snoozed in this zone...");
@@ -11086,14 +11169,13 @@ void Client::Handle_OP_PopupResponse(const EQApplicationPacket *app)
 			break;
 	}
 
-	char buf[16];
-	sprintf(buf, "%d", popup_response->popupid);
+	std::string export_string = fmt::format("{}", popup_response->popupid);
 
-	parse->EventPlayer(EVENT_POPUP_RESPONSE, this, buf, 0);
+	parse->EventPlayer(EVENT_POPUP_RESPONSE, this, export_string, 0);
 
 	Mob *Target = GetTarget();
 	if (Target && Target->IsNPC()) {
-		parse->EventNPC(EVENT_POPUP_RESPONSE, Target->CastToNPC(), this, buf, 0);
+		parse->EventNPC(EVENT_POPUP_RESPONSE, Target->CastToNPC(), this, export_string, 0);
 	}
 }
 
@@ -12103,7 +12185,8 @@ void Client::Handle_OP_RecipesFavorite(const EQApplicationPacket *app)
 			tr.name,
 			tr.trivial,
 			SUM(tre.componentcount),
-			tr.tradeskill
+			tr.tradeskill,
+			tr.must_learn
 				FROM
 				tradeskill_recipe AS tr
 				LEFT JOIN tradeskill_recipe_entries AS tre ON tr.id = tre.recipe_id
@@ -12203,7 +12286,8 @@ void Client::Handle_OP_RecipesSearch(const EQApplicationPacket *app)
 			tr.name,
 			tr.trivial,
 			SUM(tre.componentcount),
-			tr.tradeskill
+			tr.tradeskill,
+			tr.must_learn
 				FROM
 				tradeskill_recipe AS tr
 				LEFT JOIN tradeskill_recipe_entries AS tre ON tr.id = tre.recipe_id
@@ -12810,87 +12894,52 @@ void Client::Handle_OP_SetTitle(const EQApplicationPacket *app)
 
 void Client::Handle_OP_Shielding(const EQApplicationPacket *app)
 {
+	/*
+		/shield command mechanics
+		Warriors get this skill at level 30
+		Used by typing /shield while targeting a player
+		While active for the duration of 12 seconds baseline. The 'shield target' will take 50 pct less damage and
+		the 'shielder' will be hit with the damage taken by the 'shield target' after all applicable mitigiont is calculated,
+		the damage on the 'shielder' will be reduced by 25 percent, this reduction can be increased to 50 pct if equiping a shield.
+		You receive a 1% increase in mitigation for every 2 AC on the shield.
+		Shielder must stay with in a close distance (15 units) to your 'shield target'. If either move out of range, shield ends, no message given.
+		Both duration and shield range can be modified by AA.
+		Recast is 3 minutes.
+
+		For custom use cases, Mob::ShieldAbility can be used in quests with all parameters being altered. This functional
+		is also used for SPA 201 SE_PetShield, which functions in a simalar manner with pet shielding owner.
+
+		Note: If either the shielder or the shield target die all variables are reset on both.
+
+	*/
+
 	if (app->size != sizeof(Shielding_Struct)) {
 		LogError("OP size error: OP_Shielding expected:[{}] got:[{}]", sizeof(Shielding_Struct), app->size);
 		return;
 	}
-	if (GetClass() != WARRIOR)
-	{
+
+	if (GetLevel() < 30) { //Client gives message
 		return;
 	}
 
-	if (shield_target)
-	{
-		entity_list.MessageCloseString(
-			this, false, 100, 0,
-			END_SHIELDING, GetName(), shield_target->GetName());
-		for (int y = 0; y < 2; y++)
-		{
-			if (shield_target->shielder[y].shielder_id == GetID())
-			{
-				shield_target->shielder[y].shielder_id = 0;
-				shield_target->shielder[y].shielder_bonus = 0;
-			}
-		}
+	if (GetClass() != WARRIOR){
+		return;
 	}
+
+	pTimerType timer = pTimerShieldAbility;
+
+	if (!p_timers.Expired(&database, timer, false)) {
+		uint32 remain = p_timers.GetRemainingTime(timer);
+		Message(Chat::White, "You can use the ability /shield in %d minutes %d seconds.", ((remain) / 60), (remain % 60));
+		return;
+	}
+
 	Shielding_Struct* shield = (Shielding_Struct*)app->pBuffer;
-	shield_target = entity_list.GetMob(shield->target_id);
-	bool ack = false;
-	EQ::ItemInstance* inst = GetInv().GetItem(EQ::invslot::slotSecondary);
-	if (!shield_target)
-		return;
-	if (inst)
-	{
-		const EQ::ItemData* shield = inst->GetItem();
-		if (shield && shield->ItemType == EQ::item::ItemTypeShield)
-		{
-			for (int x = 0; x < 2; x++)
-			{
-				if (shield_target->shielder[x].shielder_id == 0)
-				{
-					entity_list.MessageCloseString(
-						this, false, 100, 0,
-						START_SHIELDING, GetName(), shield_target->GetName());
-					shield_target->shielder[x].shielder_id = GetID();
-					int shieldbonus = shield->AC * 2;
-					switch (GetAA(197))
-					{
-					case 1:
-						shieldbonus = shieldbonus * 115 / 100;
-						break;
-					case 2:
-						shieldbonus = shieldbonus * 125 / 100;
-						break;
-					case 3:
-						shieldbonus = shieldbonus * 150 / 100;
-						break;
-					}
-					shield_target->shielder[x].shielder_bonus = shieldbonus;
-					shield_timer.Start();
-					ack = true;
-					break;
-				}
-			}
-		}
-		else
-		{
-			Message(0, "You must have a shield equipped to shield a target!");
-			shield_target = 0;
-			return;
-		}
+
+	if (ShieldAbility(shield->target_id, 15, 12000, 50, 25, true, false)) {
+		p_timers.Start(timer, SHIELD_ABILITY_RECAST_TIME);
 	}
-	else
-	{
-		Message(0, "You must have a shield equipped to shield a target!");
-		shield_target = 0;
-		return;
-	}
-	if (!ack)
-	{
-		MessageString(Chat::White, ALREADY_SHIELDED);
-		shield_target = 0;
-		return;
-	}
+
 	return;
 }
 
@@ -13503,6 +13552,8 @@ void Client::Handle_OP_SpawnAppearance(const EQApplicationPacket *app)
 	}
 	SpawnAppearance_Struct* sa = (SpawnAppearance_Struct*)app->pBuffer;
 
+	cheat_manager.ProcessSpawnApperance(sa->spawn_id, sa->type, sa->parameter);
+
 	if (sa->spawn_id != GetID())
 		return;
 
@@ -13955,6 +14006,11 @@ void Client::Handle_OP_TargetCommand(const EQApplicationPacket *app)
 				GetTarget()->IsTargeted(1);
 				return;
 			}
+			else if (cheat_manager.GetExemptStatus(Assist)) {
+				GetTarget()->IsTargeted(1);
+				cheat_manager.SetExemptStatus(Assist, false);
+				return;
+			}
 			else if (GetTarget()->IsClient())
 			{
 				//make sure this client is in our raid/group
@@ -13968,6 +14024,15 @@ void Client::Handle_OP_TargetCommand(const EQApplicationPacket *app)
 					GetName(), GetTarget()->GetName(), (int)GetTarget()->GetBodyType());
 				database.SetMQDetectionFlag(AccountName(), GetName(), hacker_str, zone->GetShortName());
 				SetTarget((Mob*)nullptr);
+				return;
+			}
+			else if (cheat_manager.GetExemptStatus(Port)) {
+				GetTarget()->IsTargeted(1);
+				return;
+			}
+			else if (cheat_manager.GetExemptStatus(Sense)) {
+				GetTarget()->IsTargeted(1);
+				cheat_manager.SetExemptStatus(Sense, false);
 				return;
 			}
 			else if (IsXTarget(GetTarget()))
@@ -14701,38 +14766,44 @@ void Client::Handle_OP_TradeSkillCombine(const EQApplicationPacket *app)
 
 void Client::Handle_OP_Translocate(const EQApplicationPacket *app)
 {
-
 	if (app->size != sizeof(Translocate_Struct)) {
 		LogDebug("Size mismatch in OP_Translocate expected [{}] got [{}]", sizeof(Translocate_Struct), app->size);
 		DumpPacket(app);
 		return;
 	}
+
 	Translocate_Struct *its = (Translocate_Struct*)app->pBuffer;
 
-	if (!PendingTranslocate)
+	if (!PendingTranslocate) {
 		return;
+	}
 
-	if ((RuleI(Spells, TranslocateTimeLimit) > 0) && (time(nullptr) > (TranslocateTime + RuleI(Spells, TranslocateTimeLimit)))) {
+	auto translocate_time_limit = RuleI(Spells, TranslocateTimeLimit);
+	if (
+		translocate_time_limit &&
+		time(nullptr) > (TranslocateTime + translocate_time_limit)
+	) {
 		Message(Chat::Red, "You did not accept the Translocate within the required time limit.");
 		PendingTranslocate = false;
 		return;
 	}
 
 	if (its->Complete == 1) {
+		uint32 spell_id = PendingTranslocateData.spell_id;
+		bool in_translocate_zone = (
+			zone->GetZoneID() == PendingTranslocateData.zone_id &&
+			zone->GetInstanceID() == PendingTranslocateData.instance_id
+		);
 
-		int SpellID = PendingTranslocateData.spell_id;
-		int i = parse->EventSpell(EVENT_SPELL_EFFECT_TRANSLOCATE_COMPLETE, nullptr, this, SpellID, 0);
-
-		if (i == 0)
-		{
+		if (parse->EventSpell(EVENT_SPELL_EFFECT_TRANSLOCATE_COMPLETE, nullptr, this, spell_id, "", 0) == 0) {
 			// If the spell has a translocate to bind effect, AND we are already in the zone the client
 			// is bound in, use the GoToBind method. If we send OP_Translocate in this case, the client moves itself
 			// to the bind coords it has from the PlayerProfile, but with the X and Y reversed. I suspect they are
 			// reversed in the pp, and since spells like Gate are handled serverside, this has not mattered before.
-			if (((SpellID == 1422) || (SpellID == 1334) || (SpellID == 3243)) &&
-				(zone->GetZoneID() == PendingTranslocateData.zone_id &&
-					zone->GetInstanceID() == PendingTranslocateData.instance_id))
-			{
+			if (
+				IsTranslocateSpell(spell_id) &&
+				in_translocate_zone
+			) {
 				PendingTranslocate = false;
 				GoToBind();
 				return;
@@ -14740,9 +14811,16 @@ void Client::Handle_OP_Translocate(const EQApplicationPacket *app)
 
 			////Was sending the packet back to initiate client zone...
 			////but that could be abusable, so lets go through proper channels
-			MovePC(PendingTranslocateData.zone_id, PendingTranslocateData.instance_id,
-				PendingTranslocateData.x, PendingTranslocateData.y,
-				PendingTranslocateData.z, PendingTranslocateData.heading, 0, ZoneSolicited);
+			MovePC(
+				PendingTranslocateData.zone_id,
+				PendingTranslocateData.instance_id,
+				PendingTranslocateData.x,
+				PendingTranslocateData.y,
+				PendingTranslocateData.z,
+				PendingTranslocateData.heading,
+				0,
+				ZoneSolicited
+			);
 		}
 	}
 
@@ -15210,4 +15288,268 @@ void Client::Handle_OP_ResetAA(const EQApplicationPacket *app)
 		ResetAA();
 	}
 	return;
+}
+
+void Client::Handle_OP_MovementHistoryList(const EQApplicationPacket *app)
+{
+	cheat_manager.ProcessMovementHistory(app);
+}
+
+void Client::Handle_OP_UnderWorld(const EQApplicationPacket *app)
+{
+	UnderWorld *m_UnderWorld = (UnderWorld *) app->pBuffer;
+	if (app->size != sizeof(UnderWorld)) {
+		LogDebug("Size mismatch in OP_UnderWorld, expected {}, got [{}]", sizeof(UnderWorld), app->size);
+		DumpPacket(app);
+		return;
+	}
+	auto dist = Distance(
+		glm::vec3(m_UnderWorld->x, m_UnderWorld->y, zone->newzone_data.underworld),
+		glm::vec3(m_UnderWorld->x, m_UnderWorld->y, m_UnderWorld->z));
+	cheat_manager.MovementCheck(glm::vec3(m_UnderWorld->x, m_UnderWorld->y, m_UnderWorld->z));
+	if (m_UnderWorld->spawn_id == GetID() && dist <= 5.0f && zone->newzone_data.underworld_teleport_index != 0) {
+		cheat_manager.SetExemptStatus(Port, true);
+	}
+}
+
+void Client::Handle_OP_SharedTaskRemovePlayer(const EQApplicationPacket *app)
+{
+	if (app->size != sizeof(SharedTaskRemovePlayer_Struct)) {
+		LogPacketClientServer(
+			"Wrong size on Handle_OP_SharedTaskRemovePlayer | got [{}] expected [{}]",
+			app->size,
+			sizeof(SharedTaskRemovePlayer_Struct)
+		);
+		return;
+	}
+	auto *r = (SharedTaskRemovePlayer_Struct *) app->pBuffer;
+
+	LogTasks(
+		"[Handle_OP_SharedTaskRemovePlayer] field1 [{}] field2 [{}] player_name [{}]",
+		r->field1,
+		r->field2,
+		r->player_name
+	);
+
+	// live no-ops this command if not in a shared task
+	if (GetTaskState()->HasActiveSharedTask()) {
+		// struct
+		auto p = new ServerPacket(
+			ServerOP_SharedTaskRemovePlayer,
+			sizeof(ServerSharedTaskRemovePlayer_Struct)
+		);
+
+		auto *rp = (ServerSharedTaskRemovePlayer_Struct *) p->pBuffer;
+
+		// fill
+		rp->source_character_id = CharacterID();
+		rp->task_id             = GetTaskState()->GetActiveSharedTask().task_id;
+		strn0cpy(rp->player_name, r->player_name, sizeof(r->player_name));
+
+		LogTasks(
+			"[Handle_OP_SharedTaskRemovePlayer] source_character_id [{}] task_id [{}] player_name [{}]",
+			rp->source_character_id,
+			rp->task_id,
+			rp->player_name
+		);
+
+		// send
+		worldserver.SendPacket(p);
+		safe_delete(p);
+	}
+}
+
+void Client::Handle_OP_SharedTaskAddPlayer(const EQApplicationPacket *app)
+{
+	if (app->size != sizeof(SharedTaskAddPlayer_Struct)) {
+		LogPacketClientServer(
+			"Wrong size on Handle_OP_SharedTaskAddPlayer | got [{}] expected [{}]",
+			app->size,
+			sizeof(SharedTaskAddPlayer_Struct)
+		);
+		return;
+	}
+	auto *r = (SharedTaskAddPlayer_Struct *) app->pBuffer;
+
+	LogTasks(
+		"[SharedTaskAddPlayer_Struct] field1 [{}] field2 [{}] player_name [{}]",
+		r->field1,
+		r->field2,
+		r->player_name
+	);
+
+	if (!GetTaskState()->HasActiveSharedTask()) {
+		// this message is generated client-side in newer clients
+		Message(Chat::System, SharedTaskMessage::GetEQStr(SharedTaskMessage::COULD_NOT_USE_COMMAND));
+	}
+	else {
+		// struct
+		auto p = new ServerPacket(
+			ServerOP_SharedTaskAddPlayer,
+			sizeof(ServerSharedTaskAddPlayer_Struct)
+		);
+
+		auto *rp = (ServerSharedTaskAddPlayer_Struct *) p->pBuffer;
+
+		// fill
+		rp->source_character_id = CharacterID();
+		rp->task_id             = GetTaskState()->GetActiveSharedTask().task_id;
+		strn0cpy(rp->player_name, r->player_name, sizeof(r->player_name));
+
+		LogTasks(
+			"[Handle_OP_SharedTaskRemovePlayer] source_character_id [{}] task_id [{}] player_name [{}]",
+			rp->source_character_id,
+			rp->task_id,
+			rp->player_name
+		);
+
+		// send
+		worldserver.SendPacket(p);
+		safe_delete(p);
+	}
+}
+
+void Client::Handle_OP_SharedTaskMakeLeader(const EQApplicationPacket *app)
+{
+	if (app->size != sizeof(SharedTaskMakeLeader_Struct)) {
+		LogPacketClientServer(
+			"Wrong size on Handle_OP_SharedTaskMakeLeader | got [{}] expected [{}]",
+			app->size,
+			sizeof(SharedTaskMakeLeader_Struct)
+		);
+		return;
+	}
+
+	auto *r = (SharedTaskMakeLeader_Struct *) app->pBuffer;
+	LogTasks(
+		"[SharedTaskMakeLeader_Struct] field1 [{}] field2 [{}] player_name [{}]",
+		r->field1,
+		r->field2,
+		r->player_name
+	);
+
+	// live no-ops this command if not in a shared task
+	if (GetTaskState()->HasActiveSharedTask()) {
+		// struct
+		auto p = new ServerPacket(
+			ServerOP_SharedTaskMakeLeader,
+			sizeof(ServerSharedTaskMakeLeader_Struct)
+		);
+
+		auto *rp = (ServerSharedTaskMakeLeader_Struct *) p->pBuffer;
+
+		// fill
+		rp->source_character_id = CharacterID();
+		rp->task_id             = GetTaskState()->GetActiveSharedTask().task_id;
+		strn0cpy(rp->player_name, r->player_name, sizeof(r->player_name));
+
+		LogTasks(
+			"[Handle_OP_SharedTaskRemovePlayer] source_character_id [{}] task_id [{}] player_name [{}]",
+			rp->source_character_id,
+			rp->task_id,
+			rp->player_name
+		);
+
+		// send
+		worldserver.SendPacket(p);
+		safe_delete(p);
+	}
+}
+
+void Client::Handle_OP_SharedTaskInviteResponse(const EQApplicationPacket *app)
+{
+	if (app->size != sizeof(SharedTaskInviteResponse_Struct)) {
+		LogPacketClientServer(
+			"Wrong size on SharedTaskInviteResponse | got [{}] expected [{}]",
+			app->size,
+			sizeof(SharedTaskInviteResponse_Struct)
+		);
+		return;
+	}
+
+	auto *r = (SharedTaskInviteResponse_Struct *) app->pBuffer;
+	LogTasks(
+		"[SharedTaskInviteResponse] unknown00 [{}] invite_id [{}] accepted [{}]",
+		r->unknown00,
+		r->invite_id,
+		r->accepted
+	);
+
+	// struct
+	auto p = new ServerPacket(
+		ServerOP_SharedTaskInviteAcceptedPlayer,
+		sizeof(ServerSharedTaskInviteAccepted_Struct)
+	);
+
+	auto *c = (ServerSharedTaskInviteAccepted_Struct *) p->pBuffer;
+
+	// fill
+	c->source_character_id = CharacterID();
+	c->shared_task_id      = r->invite_id;
+	c->accepted            = r->accepted;
+	strn0cpy(c->player_name, GetName(), sizeof(c->player_name));
+
+	LogTasks(
+		"[ServerOP_SharedTaskInviteAcceptedPlayer] source_character_id [{}] shared_task_id [{}]",
+		c->source_character_id,
+		c->shared_task_id
+	);
+
+	// send
+	worldserver.SendPacket(p);
+	safe_delete(p);
+}
+
+void Client::Handle_OP_SharedTaskAccept(const EQApplicationPacket* app)
+{
+	auto buf = reinterpret_cast<SharedTaskAccept_Struct*>(app->pBuffer);
+
+	LogTasksDetail(
+		"[OP_SharedTaskAccept] unknown00 [{}] unknown04 [{}] npc_entity_id [{}] task_id [{}]",
+		buf->unknown00,
+		buf->unknown04,
+		buf->npc_entity_id,
+		buf->task_id
+	);
+
+	if (buf->task_id > 0 && RuleB(TaskSystem, EnableTaskSystem) && task_state) {
+		task_state->AcceptNewTask(this, buf->task_id, buf->npc_entity_id, std::time(nullptr));
+	}
+}
+
+void Client::Handle_OP_SharedTaskQuit(const EQApplicationPacket* app)
+{
+	if (GetTaskState()->HasActiveSharedTask())
+	{
+		CancelTask(TASKSLOTSHAREDTASK, TaskType::Shared);
+	}
+}
+
+void Client::Handle_OP_TaskTimers(const EQApplicationPacket* app)
+{
+	GetTaskState()->ListTaskTimers(this);
+}
+
+void Client::Handle_OP_SharedTaskPlayerList(const EQApplicationPacket* app)
+{
+	if (GetTaskState()->HasActiveSharedTask())
+	{
+		uint32_t size = sizeof(ServerSharedTaskPlayerList_Struct);
+		auto pack = std::make_unique<ServerPacket>(ServerOP_SharedTaskPlayerList, size);
+		auto buf = reinterpret_cast<ServerSharedTaskPlayerList_Struct*>(pack->pBuffer);
+		buf->source_character_id = CharacterID();
+		buf->task_id = GetTaskState()->GetActiveSharedTask().task_id;
+
+		worldserver.SendPacket(pack.get());
+	}
+}
+
+int64 Client::GetSharedTaskId() const
+{
+	return m_shared_task_id;
+}
+
+void Client::SetSharedTaskId(int64 shared_task_id)
+{
+	Client::m_shared_task_id = shared_task_id;
 }

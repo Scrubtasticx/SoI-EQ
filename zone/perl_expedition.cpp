@@ -1,23 +1,3 @@
-/**
- * EQEmulator: Everquest Server Emulator
- * Copyright (C) 2001-2020 EQEmulator Development Team (https://github.com/EQEmu/Server)
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY except by those people which sell it, which
- * are required to give you total support for your newly bought product;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR
- * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
- *
- */
-
 #include "../common/features.h"
 
 #ifdef EMBPERL_XS_CLASSES
@@ -142,7 +122,7 @@ XS(XS_Expedition_GetDynamicZoneID) {
 	Expedition* THIS = nullptr;
 	VALIDATE_THIS_IS_EXPEDITION;
 
-	XSRETURN_UV(THIS->GetDynamicZone().GetID());
+	XSRETURN_UV(THIS->GetDynamicZone()->GetID());
 }
 
 XS(XS_Expedition_GetID);
@@ -168,7 +148,7 @@ XS(XS_Expedition_GetInstanceID) {
 	Expedition* THIS = nullptr;
 	VALIDATE_THIS_IS_EXPEDITION;
 
-	XSRETURN_UV(THIS->GetDynamicZone().GetInstanceID());
+	XSRETURN_UV(THIS->GetDynamicZone()->GetInstanceID());
 }
 
 XS(XS_Expedition_GetLeaderName);
@@ -247,7 +227,7 @@ XS(XS_Expedition_GetMemberCount) {
 	Expedition* THIS = nullptr;
 	VALIDATE_THIS_IS_EXPEDITION;
 
-	XSRETURN_UV(THIS->GetDynamicZone().GetMemberCount());
+	XSRETURN_UV(THIS->GetDynamicZone()->GetMemberCount());
 }
 
 XS(XS_Expedition_GetMembers);
@@ -262,7 +242,7 @@ XS(XS_Expedition_GetMembers) {
 
 	HV* hash = newHV();
 
-	for (const auto& member : THIS->GetDynamicZone().GetMembers())
+	for (const auto& member : THIS->GetDynamicZone()->GetMembers())
 	{
 		hv_store(hash, member.name.c_str(), static_cast<uint32_t>(member.name.size()),
 			newSVuv(member.id), 0);
@@ -295,7 +275,7 @@ XS(XS_Expedition_GetSecondsRemaining) {
 	Expedition* THIS = nullptr;
 	VALIDATE_THIS_IS_EXPEDITION;
 
-	XSRETURN_UV(THIS->GetDynamicZone().GetSecondsRemaining());
+	XSRETURN_UV(THIS->GetDynamicZone()->GetSecondsRemaining());
 }
 
 XS(XS_Expedition_GetUUID);
@@ -308,7 +288,7 @@ XS(XS_Expedition_GetUUID) {
 	Expedition* THIS = nullptr;
 	VALIDATE_THIS_IS_EXPEDITION;
 
-	XSRETURN_PV(THIS->GetUUID().c_str());
+	XSRETURN_PV(THIS->GetDynamicZone()->GetUUID().c_str());
 }
 
 XS(XS_Expedition_GetZoneID);
@@ -321,7 +301,7 @@ XS(XS_Expedition_GetZoneID) {
 	Expedition* THIS = nullptr;
 	VALIDATE_THIS_IS_EXPEDITION;
 
-	XSRETURN_UV(THIS->GetDynamicZone().GetZoneID());
+	XSRETURN_UV(THIS->GetDynamicZone()->GetZoneID());
 }
 
 XS(XS_Expedition_GetZoneName);
@@ -334,7 +314,7 @@ XS(XS_Expedition_GetZoneName) {
 	Expedition* THIS = nullptr;
 	VALIDATE_THIS_IS_EXPEDITION;
 
-	XSRETURN_PV(ZoneName(THIS->GetDynamicZone().GetZoneID()));
+	XSRETURN_PV(ZoneName(THIS->GetDynamicZone()->GetZoneID()));
 }
 
 XS(XS_Expedition_GetZoneVersion);
@@ -347,7 +327,7 @@ XS(XS_Expedition_GetZoneVersion) {
 	Expedition* THIS = nullptr;
 	VALIDATE_THIS_IS_EXPEDITION;
 
-	XSRETURN_UV(THIS->GetDynamicZone().GetZoneVersion());
+	XSRETURN_UV(THIS->GetDynamicZone()->GetZoneVersion());
 }
 
 XS(XS_Expedition_HasLockout);
@@ -406,7 +386,7 @@ XS(XS_Expedition_RemoveCompass) {
 	Expedition* THIS = nullptr;
 	VALIDATE_THIS_IS_EXPEDITION;
 
-	THIS->GetDynamicZone().SetCompass(0, 0, 0, 0, true);
+	THIS->GetDynamicZone()->SetCompass(0, 0, 0, 0, true);
 
 	XSRETURN_EMPTY;
 }
@@ -445,12 +425,12 @@ XS(XS_Expedition_SetCompass) {
 	if (SvTYPE(ST(1)) == SVt_PV)
 	{
 		std::string zone_name(SvPV_nolen(ST(1)));
-		THIS->GetDynamicZone().SetCompass(ZoneID(zone_name), x, y, z, true);
+		THIS->GetDynamicZone()->SetCompass(ZoneID(zone_name), x, y, z, true);
 	}
 	else if (SvTYPE(ST(1)) == SVt_IV)
 	{
 		uint32_t zone_id = static_cast<uint32_t>(SvUV(ST(1)));
-		THIS->GetDynamicZone().SetCompass(zone_id, x, y, z, true);
+		THIS->GetDynamicZone()->SetCompass(zone_id, x, y, z, true);
 	}
 	else
 	{
@@ -555,12 +535,12 @@ XS(XS_Expedition_SetSafeReturn) {
 	if (SvTYPE(ST(1)) == SVt_PV)
 	{
 		std::string zone_name(SvPV_nolen(ST(1)));
-		THIS->GetDynamicZone().SetSafeReturn(ZoneID(zone_name), x, y, z, heading, true);
+		THIS->GetDynamicZone()->SetSafeReturn(ZoneID(zone_name), x, y, z, heading, true);
 	}
 	else if (SvTYPE(ST(1)) == SVt_IV)
 	{
 		uint32_t zone_id = static_cast<uint32_t>(SvUV(ST(1)));
-		THIS->GetDynamicZone().SetSafeReturn(zone_id, x, y, z, heading, true);
+		THIS->GetDynamicZone()->SetSafeReturn(zone_id, x, y, z, heading, true);
 	}
 	else
 	{
@@ -581,7 +561,7 @@ XS(XS_Expedition_SetSecondsRemaining) {
 	VALIDATE_THIS_IS_EXPEDITION;
 
 	uint32_t seconds_remaining = static_cast<uint32_t>(SvUV(ST(1)));
-	THIS->GetDynamicZone().SetSecondsRemaining(seconds_remaining);
+	THIS->GetDynamicZone()->SetSecondsRemaining(seconds_remaining);
 
 	XSRETURN_EMPTY;
 }
@@ -601,7 +581,7 @@ XS(XS_Expedition_SetZoneInLocation) {
 	float z = static_cast<float>(SvNV(ST(3)));
 	float heading = static_cast<float>(SvNV(ST(4)));
 
-	THIS->GetDynamicZone().SetZoneInLocation(x, y, z, heading, true);
+	THIS->GetDynamicZone()->SetZoneInLocation(x, y, z, heading, true);
 
 	XSRETURN_EMPTY;
 }

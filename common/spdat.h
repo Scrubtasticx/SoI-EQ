@@ -129,6 +129,8 @@
 #define SPELL_SPIRITUAL_ECHO 1248
 #define SPELL_BRISTLING_ARMAMENT 1249
 #define SPELL_WATON_DESTRUCTION 1250
+#define SPELL_TRANSLOCATE_GROUP 1334
+#define SPELL_TRANSLOCATE 1422
 #define SPELL_ACTING_MAGIC_RESIST_I 1900
 #define SPELL_ACTING_FIRE_RESIST_I 1901
 #define SPELL_ACTING_COLD_RESIST_I 1902
@@ -153,8 +155,22 @@
 #define SPELL_ACTING_SPIRIT_I 1921
 #define SPELL_ACTING_SPIRIT_II 1922
 #define SPELL_RESURRECTION_SICKNESS 756
+#define SPELL_RESURRECTION_SICKNESS4 757
+#define SPELL_TELEPORT 3243
 #define SPELL_RESURRECTION_SICKNESS2 5249
 #define SPELL_REVIVAL_SICKNESS 13087
+#define SPELL_RESURRECTION_SICKNESS3 37624
+#define SPELL_PACT_OF_HATE_RECOURSE 40375
+#define SPELL_INCENDIARY_OOZE_BUFF 32513
+
+//spellgroup ids
+#define SPELLGROUP_FRENZIED_BURNOUT 2754
+#define SPELLGROUP_ILLUSION_OF_GRANDEUR 38603
+#define SPELLGROUP_ROGUES_FURY 16861
+#define SPELLGROUP_HARMONIOUS_PRECISION 15634
+#define SPELLGROUP_HARMONIOUS_EXPANSE 15633
+#define SPELLGROUP_FURIOUS_RAMPAGE 38106
+#define SPELLGROUP_SHROUD_OF_PRAYER 41050
 
 
 
@@ -163,7 +179,10 @@
 #define MAX_RESISTABLE_EFFECTS 12	// Number of effects that are typcially checked agianst resists.
 #define MaxLimitInclude 16 //Number(x 0.5) of focus Limiters that have inclusive checks used when calcing focus effects
 #define MAX_SKILL_PROCS 4 //Number of spells to check skill procs from. (This is arbitrary) [Single spell can have multiple proc checks]
+#define MAX_AA_PROCS 16 //(Actual Proc Amount is MAX_AA_PROCS/4) Number of spells to check AA procs from. (This is arbitrary)
 #define MAX_SYMPATHETIC_PROCS 10 // Number of sympathetic procs a client can have (This is arbitrary)
+#define MAX_FOCUS_PROC_LIMIT_TIMERS 20 //Number of focus recast timers that can be going at same time (This is arbitrary)
+#define MAX_PROC_LIMIT_TIMERS 8 //Number of proc delay timers that can be going at same time, different proc types get their own timer array. (This is arbitrary)
 
 
 
@@ -188,6 +207,324 @@ enum FocusLimitIncludes {
 	IncludeFoundSELimitSpellClass     = 13,
 	IncludeExistsSELimitSpellSubclass = 14,
 	IncludeFoundSELimitSpellSubclass  = 15
+};
+/*
+	The id's correspond to 'type' 39 in live(2021) dbstr_us gives the message for target and caster restricted effects. These are not present in the ROF2 dbstr_us.
+	If from CasterRestriction spell field. "Your target does not meet the spell requirements. <insert below corresponding string>." Msg in combat window, color red.
+	If set as limit in a direct damage or heal spell (SPA 0) do not give message.
+*/
+enum SpellRestriction
+{
+	UNKNOWN_3                                                                 = 3,   // | caster restriction | seen in spell 30183 Mind Spiral
+	IS_NOT_ON_HORSE                                                           = 5,   // | caster restriction |
+	IS_ANIMAL_OR_HUMANOID                                                     = 100, // This spell will only work on animals or humanoid creatures. 
+	IS_DRAGON                                                                 = 101, // This spell will only work on dragons. 
+	IS_ANIMAL_OR_INSECT                                                       = 102, // This spell will only work on animals or insects. 
+	IS_BODY_TYPE_MISC                                                         = 103, // This spell will only work on humanoids, lycanthropes, giants, Kael Drakkel giants, Coldain, animals, insects, constructs, dragons, Skyshrine dragons, Muramites, or creatures constructed from magic. 
+	IS_BODY_TYPE_MISC2                                                        = 104, // This spell will only work on humanoids, lycanthropes, giants, Kael Drakkel giants, Coldain, animals, or insects. 
+	IS_PLANT                                                                  = 105, // This spell will only work on plants. 
+	IS_GIANT                                                                  = 106, // This spell will only work on animals. | Live used to have this on spells restricted to Giants, but those spells were removed... We still have them
+	IS_NOT_ANIMAL_OR_HUMANOID                                                 = 108, // This spell will only work on targets that are neither animals or humanoid. 
+	IS_BIXIE                                                                  = 109, // This spell will only work on bixies. 
+	IS_HARPY                                                                  = 110, // This spell will only work on harpies. 
+	IS_GNOLL                                                                  = 111, // This spell will only work on gnolls. 
+	IS_SPORALI                                                                = 112, // This spell will only work on fungusoids. 
+	IS_KOBOLD                                                                 = 113, // This spell will only work on kobolds. 
+	IS_FROSTCRYPT_SHADE                                                       = 114, // This spell will only work on undead creatures or the Shades of Frostcrypt. 
+	IS_DRAKKIN                                                                = 115, // This spell will only work on Drakkin. 
+	IS_UNDEAD_OR_VALDEHOLM_GIANT                                              = 116, // This spell will only work on undead creatures or the inhabitants of Valdeholm. 
+	IS_ANIMAL_OR_PLANT                                                        = 117, // This spell will only work on plants or animals. 
+	IS_SUMMONED                                                               = 118, // This spell will only work on constructs, elementals, or summoned elemental minions. 
+	IS_WIZARD_USED_ON_MAGE_FIRE_PET                                           = 119, // This spell will only work on wizards. | Live uses this on high level mage fire pets, which are wizard class 
+	IS_UNDEAD                                                                 = 120, //  
+	IS_NOT_UNDEAD_OR_SUMMONED_OR_VAMPIRE                                      = 121, // This spell will only work on creatures that are not undead, constructs, elementals, or vampires. 
+	IS_FAE_OR_PIXIE                                                           = 122, // This spell will only work on Fae or pixies. 
+	IS_HUMANOID                                                               = 123, //  
+	IS_UNDEAD_AND_HP_LESS_THAN_10_PCT                                         = 124, // The Essence Extractor whirrs but does not light up. 
+	IS_CLOCKWORK_AND_HP_LESS_THAN_45_PCT                                      = 125, // This spell will only work on clockwork gnomes. 
+	IS_WISP_AND_HP_LESS_THAN_10_PCT                                           = 126, // This spell will only work on wisps at or below 10% of their maximum HP. 
+	IS_CLASS_MELEE_THAT_CAN_BASH_OR_KICK_EXCEPT_BARD                          = 127, // This spell will only work on non-bard targets that can bash or kick. 
+	IS_CLASS_PURE_MELEE                                                       = 128, // This spell will only affect melee classes (warriors, monks, rogues, and berserkers). 
+	IS_CLASS_PURE_CASTER                                                      = 129, // This spell will only affect pure caster classes (necromancers, wizards, magicians, and enchanters). 
+	IS_CLASS_HYBRID_CLASS                                                     = 130, // This spell will only affect hybrid classes (paladins, rangers, shadow knights, bards, and beastlords). 
+	IS_CLASS_WARRIOR                                                          = 131, // This spell will only affect Warriors. 
+	IS_CLASS_CLERIC                                                           = 132, // This spell will only affect Clerics. 
+	IS_CLASS_PALADIN                                                          = 133, // This spell will only affect Paladins. 
+	IS_CLASS_RANGER                                                           = 134, // This spell will only affect Rangers. 
+	IS_CLASS_SHADOWKNIGHT                                                     = 135, // This spell will only affect Shadow Knights. 
+	IS_CLASS_DRUID                                                            = 136, // This spell will only affect Druids. 
+	IS_CLASS_MONK                                                             = 137, // This spell will only affect Monks. 
+	IS_CLASS_BARD                                                             = 138, // This spell will only affect Bards. 
+	IS_CLASS_ROGUE                                                            = 139, // This spell will only affect Rogues. 
+	IS_CLASS_SHAMAN                                                           = 140, // This spell will only affect Shamans. 
+	IS_CLASS_NECRO                                                            = 141, // This spell will only affect Necromancers. 
+	IS_CLASS_WIZARD                                                           = 142, // This spell will only affect Wizards. 
+	IS_CLASS_MAGE                                                             = 143, // This spell will only affect Magicians. 
+	IS_CLASS_ENCHANTER                                                        = 144, // This spell will only affect Enchanters. 
+	IS_CLASS_BEASTLORD                                                        = 145, // This spell will only affect Beastlords. 
+	IS_CLASS_BERSERKER                                                        = 146, // This spell will only affect Berserkers. 
+	IS_CLASS_CLR_SHM_DRU                                                      = 147, // This spell will only affect priest classes (clerics, druids, and shaman). 
+	IS_CLASS_NOT_WAR_PAL_SK                                                   = 148, // This spell will not affect Warriors, Paladins, or Shadow Knights. 
+	IS_LEVEL_UNDER_100                                                        = 150, // This spell will not affect any target over level 100. 
+	IS_NOT_RAID_BOSS                                                          = 190, // This spell will not affect raid bosses. 
+	IS_RAID_BOSS                                                              = 191, // This spell will only affect raid bosses. 
+	FRENZIED_BURNOUT_ACTIVE                                                   = 192, // This spell will only cast if you have Frenzied Burnout active. 
+	FRENZIED_BURNOUT_NOT_ACTIVE                                               = 193, // This spell will only cast if you do not have Frenzied Burnout active. 
+	UNKNOWN_199                                                               = 199, //
+	IS_HP_ABOVE_75_PCT                                                        = 201, //  
+	IS_HP_LESS_THAN_20_PCT                                                    = 203, // Your target's HP must be at 20% of its maximum or below. | caster restriction |
+	IS_HP_LESS_THAN_50_PCT                                                    = 204, //	Your target's HP must be at 50% of its maximum or below. | caster restriction |
+	IS_HP_LESS_THAN_75_PCT                                                    = 205, // Your target's HP must be at 75% of its maximum or below.	
+	IS_NOT_IN_COMBAT                                                          = 216, // This spell will only affect creatures that are not in combat.	
+	HAS_AT_LEAST_1_PET_ON_HATELIST                                            = 221, //		
+	HAS_AT_LEAST_2_PETS_ON_HATELIST                                           = 222, //		
+	HAS_AT_LEAST_3_PETS_ON_HATELIST                                           = 223, //		
+	HAS_AT_LEAST_4_PETS_ON_HATELIST                                           = 224, //		
+	HAS_AT_LEAST_5_PETS_ON_HATELIST                                           = 225, //		
+	HAS_AT_LEAST_6_PETS_ON_HATELIST                                           = 226, //		
+	HAS_AT_LEAST_7_PETS_ON_HATELIST                                           = 227, //		
+	HAS_AT_LEAST_8_PETS_ON_HATELIST                                           = 228, //		
+	HAS_AT_LEAST_9_PETS_ON_HATELIST                                           = 229, //		
+	HAS_AT_LEAST_10_PETS_ON_HATELIST                                          = 230, //		
+	HAS_AT_LEAST_11_PETS_ON_HATELIST                                          = 231, //		
+	HAS_AT_LEAST_12_PETS_ON_HATELIST                                          = 232, //		
+	HAS_AT_LEAST_13_PETS_ON_HATELIST                                          = 233, //		
+	HAS_AT_LEAST_14_PETS_ON_HATELIST                                          = 234, //		
+	HAS_AT_LEAST_15_PETS_ON_HATELIST                                          = 235, //		
+	HAS_AT_LEAST_16_PETS_ON_HATELIST                                          = 236, //		
+	HAS_AT_LEAST_17_PETS_ON_HATELIST                                          = 237, //		
+	HAS_AT_LEAST_18_PETS_ON_HATELIST                                          = 238, //		
+	HAS_AT_LEAST_19_PETS_ON_HATELIST                                          = 239, //		
+	HAS_AT_LEAST_20_PETS_ON_HATELIST                                          = 240, //		
+	IS_HP_LESS_THAN_35_PCT                                                    = 250, //	Your target's HP must be at 35% of its maximum or below.
+	HAS_BETWEEN_1_TO_2_PETS_ON_HATELIST                                       = 260, // between 1 and 2 pets 
+	HAS_BETWEEN_3_TO_5_PETS_ON_HATELIST                                       = 261, // between 3 and 5 pets 
+	HAS_BETWEEN_6_TO_9_PETS_ON_HATELIST                                       = 262, // between 6 and 9 pets 
+	HAS_BETWEEN_10_TO_14_PETS_ON_HATELIST                                     = 263, // between 10 and 14 pets 
+	HAS_MORE_THAN_14_PETS_ON_HATELIST                                         = 264, // 15 or more pets 
+	IS_CLASS_CHAIN_OR_PLATE                                                   = 304, // This spell will only affect plate or chain wearing classes. 
+	IS_HP_BETWEEN_5_AND_9_PCT                                                 = 350, // Your target's HP must be between 5% and 9% of its maximum.	
+	IS_HP_BETWEEN_10_AND_14_PCT                                               = 351, //	Your target's HP must be between 10% and 14% of its maximum. 
+	IS_HP_BETWEEN_15_AND_19_PCT                                               = 352, // Your target's HP must be between 15% and 19% of its maximum.	
+	IS_HP_BETWEEN_20_AND_24_PCT                                               = 353, //	Your target's HP must be between 20% and 24% of its maximum. 
+	IS_HP_BETWEEN_25_AND_29_PCT                                               = 354, // Your target's HP must be between 25% and 29% of its maximum.	
+	IS_HP_BETWEEN_30_AND_34_PCT                                               = 355, //	Your target's HP must be between 30% and 34% of its maximum. 
+	IS_HP_BETWEEN_35_AND_39_PCT                                               = 356, // Your target's HP must be between 35% and 39% of its maximum.	
+	IS_HP_BETWEEN_40_AND_44_PCT                                               = 357, //	Your target's HP must be between 40% and 44% of its maximum. 
+	IS_HP_BETWEEN_45_AND_49_PCT                                               = 358, // Your target's HP must be between 45% and 49% of its maximum.	
+	IS_HP_BETWEEN_50_AND_54_PCT                                               = 359, //	Your target's HP must be between 50% and 54% of its maximum. 
+	IS_HP_BETWEEN_55_AND_59_PCT                                               = 360, // Your target's HP must be between 55% and 59% of its maximum.	
+	IS_HP_BETWEEN_5_AND_15_PCT                                                = 398, //	Your target's HP must be between 5% and 15% of its maximum. 
+	IS_HP_BETWEEN_15_AND_25_PCT                                               = 399, // Your target's HP must be between 15% and 25% of its maximum.	
+	IS_HP_BETWEEN_1_AND_25_PCT                                                = 400, //	Your target's HP must be at 25% of its maximum or below. 
+	IS_HP_BETWEEN_25_AND_35_PCT                                               = 401, // Your target's HP must be between 25% and 35% of its maximum.	
+	IS_HP_BETWEEN_35_AND_45_PCT                                               = 402, //	Your target's HP must be between 35% and 45% of its maximum. 
+	IS_HP_BETWEEN_45_AND_55_PCT                                               = 403, // Your target's HP must be between 45% and 55% of its maximum.	
+	IS_HP_BETWEEN_55_AND_65_PCT                                               = 404, //	Your target's HP must be between 55% and 65% of its maximum. 
+	IS_HP_BETWEEN_65_AND_75_PCT                                               = 405, // Your target's HP must be between 65% and 75% of its maximum.	
+	IS_HP_BETWEEN_75_AND_85_PCT                                               = 406, //	Your target's HP must be between 75% and 85% of its maximum. 
+	IS_HP_BETWEEN_85_AND_95_PCT                                               = 407, // Your target's HP must be between 85% and 95% of its maximum.	
+	IS_HP_ABOVE_45_PCT                                                        = 408, //	Your target's HP must be at least 45% of its maximum. 
+	IS_HP_ABOVE_55_PCT                                                        = 409, // Your target's HP must be at least 55% of its maximum.	
+	UNKNOWN_TOO_MUCH_HP_410                                                   = 410, //	Your target has too much HP to be affected by this spell.	
+	UNKNOWN_TOO_MUCH_HP_411                                                   = 411, //	Your target has too much HP to be affected by this spell.	
+	IS_HP_ABOVE_99_PCT                                                        = 412, //		
+	IS_MANA_ABOVE_10_PCT                                                      = 429, //	You must have at least 10% of your maximum mana available to cast this spell. | caster restriction | 
+	IS_HP_BELOW_5_PCT                                                         = 501, //		
+	IS_HP_BELOW_10_PCT                                                        = 502, //		
+	IS_HP_BELOW_15_PCT                                                        = 503, //		
+	IS_HP_BELOW_20_PCT                                                        = 504, //	Your target's HP must be at 20% of its maximum or below. 
+	IS_HP_BELOW_25_PCT                                                        = 505, //  
+	IS_HP_BELOW_30_PCT                                                        = 506, //  
+	IS_HP_BELOW_35_PCT                                                        = 507, //  
+	IS_HP_BELOW_40_PCT                                                        = 508, //  
+	IS_HP_BELOW_45_PCT                                                        = 509, // Your target's HP must be at 45% of its maximum or below.	
+	IS_HP_BELOW_50_PCT                                                        = 510, //		
+	IS_HP_BELOW_55_PCT                                                        = 511, //		
+	IS_HP_BELOW_60_PCT                                                        = 512, //		
+	IS_HP_BELOW_65_PCT                                                        = 513, //		
+	IS_HP_BELOW_70_PCT                                                        = 514, //		
+	IS_HP_BELOW_75_PCT                                                        = 515, //		
+	IS_HP_BELOW_80_PCT                                                        = 516, //		
+	IS_HP_BELOW_85_PCT                                                        = 517, //		
+	IS_HP_BELOW_90_PCT                                                        = 518, //	This ability requires you to be at or below 90% of your maximum HP.	| caster restriction |
+	IS_HP_BELOW_95_PCT                                                        = 519, //		
+	IS_MANA_BELOW_UNKNOWN_PCT                                                 = 521, //
+	IS_ENDURANCE_BELOW_40_PCT                                                 = 522, //		
+	IS_MANA_BELOW_40_PCT                                                      = 523, //		
+	IS_HP_ABOVE_20_PCT                                                        = 524, //	Your target's HP must be at least 21% of its maximum. 
+	IS_BODY_TYPE_UNDEFINED                                                    = 600, // This spell will only work on creatures with an undefined body type.
+	IS_BODY_TYPE_HUMANOID                                                     = 601, // This spell will only work on humanoid creatures. 
+	IS_BODY_TYPE_WEREWOLF													  = 602, // This spell will only work on lycanthrope creatures. 
+	IS_BODY_TYPE_UNDEAD                                                       = 603, // This spell will only work on undead creatures. 
+	IS_BODY_TYPE_GIANTS                                                       = 604, // This spell will only work on giants. 
+	IS_BODY_TYPE_CONSTRUCTS                                                   = 605, // This spell will only work on constructs. 
+	IS_BODY_TYPE_EXTRAPLANAR                                                  = 606, // This spell will only work on extraplanar creatures. 
+	IS_BODY_TYPE_MAGICAL_CREATURE                                             = 607, // This spell will only work on creatures constructed from magic. 
+	IS_BODY_TYPE_UNDEADPET                                                    = 608, // This spell will only work on animated undead servants. 
+	IS_BODY_TYPE_KAELGIANT                                                    = 609, // This spell will only work on the Giants of Kael Drakkal. 
+	IS_BODY_TYPE_COLDAIN                                                      = 610, // This spell will only work on Coldain Dwarves. 
+	IS_BODY_TYPE_VAMPIRE                                                      = 612, // This spell will only work on vampires. 
+	IS_BODY_TYPE_ATEN_HA_RA                                                   = 613, // This spell will only work on Aten Ha Ra. 
+	IS_BODY_TYPE_GREATER_AHKEVANS                                             = 614, // This spell will only work on Greater Ahkevans. 
+	IS_BODY_TYPE_KHATI_SHA                                                    = 615, // This spell will only work on Khati Sha. 
+	IS_BODY_TYPE_LORD_INQUISITOR_SERU                                         = 616, // This spell will only work on Lord Inquisitor Seru. 
+	IS_BODY_TYPE_GRIEG_VENEFICUS                                              = 617, // This spell will only work on Grieg Veneficus. 
+	IS_BODY_TYPE_FROM_PLANE_OF_WAR                                            = 619, // This spell will only work on creatures from the Plane of War.
+	IS_BODY_TYPE_LUGGALD                                                      = 620, // This spell will only work on Luggalds. 
+	IS_BODY_TYPE_ANIMAL                                                       = 621, // This spell will only work on animals. 
+	IS_BODY_TYPE_INSECT                                                       = 622, // This spell will only work on insects. 
+	IS_BODY_TYPE_MONSTER                                                      = 623, // This spell will only work on monsters. 
+	IS_BODY_TYPE_ELEMENTAL                                                    = 624, // This spell will only work on elemental creatures. 
+	IS_BODY_TYPE_PLANT                                                        = 625, // This spell will only work on plants. 
+	IS_BODY_TYPE_DRAGON2                                                      = 626, // This spell will only work on dragons. 
+	IS_BODY_TYPE_SUMMONED_ELEMENTAL                                           = 627, // This spell will only work on summoned elementals. 
+	IS_BODY_TYPE_WARDER                                                       = 628, //  
+	IS_BODY_TYPE_DRAGON_OF_TOV                                                = 630, // This spell will only work on Dragons of Veeshan's Temple.	
+	IS_BODY_TYPE_FAMILIAR                                                     = 631, //	This spell will only work on familiars.	
+	IS_BODY_TYPE_MURAMITE                                                     = 634, //	This spell will only work on Muramites.	
+	IS_NOT_UNDEAD_OR_SUMMONED                                                 = 635, //		
+	IS_NOT_PLANT                                                              = 636, //	This spell will not affect plants.	
+	IS_NOT_CLIENT                                                             = 700, //	This spell will not work on adventurers.	
+	IS_CLIENT                                                                 = 701, //	This spell will only work on adventurers.	
+	IS_LEVEL_ABOVE_42_AND_IS_CLIENT                                           = 800, //	This spell will only work on level 43 or higher adventurers.
+	UNKNOWN_812                                                               = 812, //	| seen in spell 22616 Thaumatize Pet Mana Regen Base |
+	UNKNOWN_814                                                               = 814, //	| seen in spell 22704 Vegetentacles I |
+	IS_TREANT                                                                 = 815, //	This spell will only work on treants.	
+	IS_BIXIE2                                                                 = 816, //	This spell will only work on bixies.	
+	IS_SCARECROW                                                              = 817, //	This spell will only work on scarecrows.	
+	IS_VAMPIRE_OR_UNDEAD_OR_UNDEADPET                                         =	818, //	This spell will only work on vampires, undead, or animated undead creatures.	
+	IS_NOT_VAMPIRE_OR_UNDEAD                                                  = 819, //	This spell will not work on vampires or undead creatures.	
+	IS_CLASS_KNIGHT_HYBRID_MELEE                                              = 820, //	This spell will only work on knights, hybrids, or melee classes.	
+	IS_CLASS_WARRIOR_CASTER_PRIEST                                            = 821, //	This spell will only work on warriors, casters, or priests.	
+	UNKNOWN_822                                                               = 822, // | seen in spell 22870 Morell's Distraction 822 |
+	IS_END_BELOW_21_PCT                                                       = 825, //	This ability requires you to be at or below 21% of your maximum endurance.	
+	IS_END_BELOW_25_PCT                                                       = 826, //	This ability requires you to be at or below 25% of your maximum endurance.	
+	IS_END_BELOW_29_PCT                                                       = 827, //	This ability requires you to be at or below 29% of your maximum endurance.	
+	IS_REGULAR_SERVER                                                         = 836, //	
+	IS_PROGRESSION_SERVER                                                     = 837, //		
+	IS_GOD_EXPANSION_UNLOCKED                                                 = 839, //
+	UNKNOWN_840                                                               = 840, // | caster restriction | seen in spell 6883 Expedient Recovery
+	UNKNOWN_841                                                               = 841, // | caster restriction | seen in spell 32192 Merciless Blow
+	IS_HUMANOID_LEVEL_84_MAX                                                  = 842, //		
+	IS_HUMANOID_LEVEL_86_MAX                                                  = 843, //		
+	IS_HUMANOID_LEVEL_88_MAX                                                  = 844, //		
+	HAS_CRYSTALLIZED_FLAME_BUFF                                               = 845, //	This spell will only work on targets afflicted by Crystallized Flame. | On live spell does not appear to be a buff
+	HAS_INCENDIARY_OOZE_BUFF                                                  = 847, //	This spell will only work on targets afflicted by Incendiary Ooze.	
+	IS_LEVEL_90_MAX                                                           = 860, //		
+	IS_LEVEL_92_MAX                                                           = 861, //		
+	IS_LEVEL_94_MAX                                                           = 862, //		
+	IS_LEVEL_95_MAX                                                           = 863, //		
+	IS_LEVEL_97_MAX                                                           = 864, //		
+	IS_LEVEL_99_MAX                                                           = 865, //		
+	HAS_WEAPONSTANCE_DEFENSIVE_PROFICIENCY                                    = 866, // | caster restriction |
+	HAS_WEAPONSTANCE_TWO_HAND_PROFICIENCY                                     = 867, // | caster restriction |	
+	HAS_WEAPONSTANCE_DUAL_WEILD_PROFICIENCY                                   = 868, // | caster restriction |
+	IS_LEVEL_100_MAX                                                          = 869, //		
+	IS_LEVEL_102_MAX                                                          = 870, //		
+	IS_LEVEL_104_MAX                                                          = 871, //		
+	IS_LEVEL_105_MAX                                                          = 872, //		
+	IS_LEVEL_107_MAX                                                          = 873, //		
+	IS_LEVEL_109_MAX                                                          = 874, //		
+	IS_LEVEL_110_MAX                                                          = 875, //		
+	IS_LEVEL_112_MAX                                                          = 876, //		
+	IS_LEVEL_114_MAX                                                          = 877, //		
+	HAS_TBL_ESIANTI_ACCESS                                                    = 997, //	This spell will only transport adventurers who have gained access to Esianti: Palace of the Winds.	| not implemented
+	HAS_ITEM_CLOCKWORK_SCRAPS                                                 = 999, //		
+	IS_BETWEEN_LEVEL_1_AND_75                                                 = 1000, //		
+	IS_BETWEEN_LEVEL_76_AND_85                                                = 1001, //		
+	IS_BETWEEN_LEVEL_86_AND_95                                                = 1002, //		
+	IS_BETWEEN_LEVEL_96_AND_105                                               = 1003, //		
+	IS_HP_LESS_THAN_80_PCT                                                    = 1004, //		
+	IS_LEVEL_ABOVE_34                                                         = 1474, // Your target must be level 35 or higher.	
+	IN_TWO_HANDED_STANCE                                                      = 2000, // You must be in your two-handed stance to use this ability.	
+	IN_DUAL_WIELD_HANDED_STANCE                                               = 2001, // You must be in your dual-wielding stance to use this ability.	
+	IN_SHIELD_STANCE                                                          = 2002, // You must be in your shield stance to use this ability.	
+	NOT_IN_TWO_HANDED_STANCE                                                  = 2010, // You may not use this ability if you are in your two-handed stance.	
+	NOT_IN_DUAL_WIELD_HANDED_STANCE                                           = 2011, // You may not use this ability if you are in your dual-wielding stance.	
+	NOT_IN_SHIELD_STANCE                                                      = 2012, // You may not use this ability if you are in your shield stance.	
+	LEVEL_46_MAX                                                              = 2761, //		
+	DISABLED_UNTIL_EXPANSION_ROK                                              = 7000, // This ability is disabled until Ruins of Kunark.	
+	DISABLED_UNTIL_EXPANSION_SOV                                              = 7001, // This ability is disabled until Scars of Velious.	
+	DISABLED_UNTIL_EXPANSION_SOL                                              = 7002, // This ability is disabled until Shadows of Luclin.	
+	DISABLED_UNTIL_EXPANSION_POP                                              = 7003, // This ability is disabled until Planes of Power.	
+	DISABLED_UNTIL_EXPANSION_LOY                                              = 7004, // This ability is disabled until Legacy of Ykesha.	
+	DISABLED_UNTIL_EXPANSION_LDON                                             = 7005, // This ability is disabled until Lost Dungeons of Norrath.	
+	DISABLED_UNTIL_EXPANSION_GOD                                              = 7006, // This ability is disabled until Gates of Discord.	
+	DISABLED_UNTIL_EXPANSION_OOW                                              = 7007, // This ability is disabled until Omens of War.	
+	DISABLED_UNTIL_EXPANSION_DON                                              = 7008, // This ability is disabled until Dragons of Norrath.	
+	DISABLED_UNTIL_EXPANSION_DOD                                              = 7009, // This ability is disabled until Depths of Darkhollow.	
+	DISABLED_UNTIL_EXPANSION_POR                                              = 7010, // This ability is disabled until Prophecy of Ro.	
+	DISABLED_UNTIL_EXPANSION_TSS                                              = 7011, // This ability is disabled until Serpent's Spine. 
+	DISABLED_UNTIL_EXPANSION_TBS                                              = 7012, // This ability is disabled until Buried Sea. 
+	DISABLED_UNTIL_EXPANSION_SOF                                              = 7013, // This ability is disabled until Secrets of Faydwer. 
+	DISABLED_UNTIL_EXPANSION_SOD                                              = 7014, // This ability is disabled until Seeds of Destruction. 
+	DISABLED_UNTIL_EXPANSION_UF                                               = 7015, // This ability is disabled until Underfoot. 
+	DISABLED_UNTIL_EXPANSION_HOT                                              = 7016, // This ability is disabled until House of Thule. 
+	DISABLED_UNTIL_EXPANSION_VOA                                              = 7017, // This ability is disabled until Veil of Alaris. 
+	DISABLED_UNTIL_EXPANSION_ROF                                              = 7018, // This ability is disabled until Rain of Fear. 
+	DISABLED_UNTIL_EXPANSION_COF                                              = 7019, // This ability is disabled until Call of the Forsaken. 
+	DISABLED_UNTIL_EXPANSION_TDS                                              = 7020, // This ability is disabled until Darkened Sea. 
+	DISABLED_UNTIL_EXPANSION_TBM                                              = 7021, // This ability is disabled until Broken Mirror. 
+	DISABLED_UNTIL_EXPANSION_EOK                                              = 7022, // This ability is disabled until Empires of Kunark. 
+	DISABLED_UNTIL_EXPANSION_ROS                                              = 7023, // This ability is disabled until Ring of Scale. 
+	DISABLED_UNTIL_EXPANSION_TBL                                              = 7024, // This ability is disabled until The Burning Lands. 
+	DISABLED_UNTIL_EXPANSION_TOV                                              = 7025, // This ability is disabled until Torment of Velious. 
+	DISABLED_UNTIL_EXPANSION_COV                                              = 7026, // This ability is disabled until Claws of Veeshan. 
+	HAS_NO_MANA_BURN_BUFF                                                     = 8450,  // This spell will not take hold until the effects of the previous Mana Burn have expired. 
+	IS_RACE_FIRST_CUSTOM                                                      = 10000, // | custom range to restrict targets or casters by race *not on live* |
+	IS_RACE_LAST_CUSTOM                                                       = 11000, // | custom range to restrict targets or casters by race *not on live* |
+	IS_CLIENT_AND_MALE_PLATE_USER                                             = 11044, // Your target wouldn't look right as that Jann.	
+	IS_CLEINT_AND_MALE_DRUID_ENCHANTER_MAGICIAN_NECROANCER_SHAMAN_OR_WIZARD   = 11090, // Your target wouldn't look right as that Jann. 
+	IS_CLIENT_AND_MALE_BEASTLORD_BERSERKER_MONK_RANGER_OR_ROGUE               = 11209, // Your target wouldn't look right as that Jann.	
+	IS_CLIENT_AND_FEMALE_PLATE_USER                                           = 11210, // Your target wouldn't look right as that Jann. 
+	IS_CLIENT_AND_FEMALE_DRUID_ENCHANTER_MAGICIAN_NECROANCER_SHAMAN_OR_WIZARD = 11211, // Your target wouldn't look right as that Jann.	
+	IS_CLIENT_AND_FEMALE_BEASTLORD_BERSERKER_MONK_RANGER_OR_ROGUE             = 11248, // Your target wouldn't look right as that Jann. 
+	HAS_TRAVELED_TO_STRATOS                                                   = 11260, // You must travel to Stratos at least once before wishing to go there. 
+	HAS_TRAVELED_TO_AALISHAI                                                  = 11261, // You must travel to Aalishai at least once before wishing to go there. 
+	HAS_TRAVELED_TO_MEARATS                                                   = 11268, // You must travel to Mearatas at least once before wishing to go there. 
+	HAS_NO_ILLUSIONS_OF_GRANDEUR_BUFF                                         = 12519, //  
+	IS_HP_ABOVE_50_PCT                                                        = 16010, //  
+	IS_HP_UNDER_50_PCT                                                        = 16031, //  
+	IS_OFF_HAND_EQUIPED                                                       = 27672, // You must be wielding a weapon or shield in your offhand to use this ability. 
+	HAS_NO_PACT_OF_FATE_RECOURSE_BUFF                                         = 29556, // This spell will not work while Pact of Fate Recourse is active. | caster restriction |
+	HAS_NO_SHROUD_OF_PRAYER_BUFF                                              = 32339, // Your target cannot receive another Quiet Prayer this soon. 
+	IS_MANA_BELOW_20_PCT                                                      = 38311, // This ability requires you to be at or below 20% of your maximum mana. 
+	IS_MANA_ABOVE_50_PCT                                                      = 38312, // This ability requires you to be at or above 50% of your maximum mana. 
+	COMPLETED_ACHIEVEMENT_LEGENDARY_ANSWERER                                  = 39281, // You have completed Legendary Answerer. 
+	HAS_NO_ROGUES_FURY_BUFF                                                   = 40297, // This spell will not affect anyone that currently has Rogue's Fury active.	| caster restriction |
+	NOT_COMPLETED_ACHIEVEMENT_LEGENDARY_ANSWERER                              = 42280, // You must complete Legendary Answerer.	
+	IS_SUMMONED_OR_UNDEAD                                                     = 49326, //		
+	IS_CLASS_CASTER_PRIEST                                                    = 49529, //		
+	IS_END_OR_MANA_ABOVE_20_PCT                                               = 49543, // You must have at least 20% of your maximum mana and endurance to use this ability.	//pure melee class check end, other check mana
+	IS_END_OR_MANA_BELOW_30_PCT                                               = 49573, // Your target already has 30% or more of their maximum mana or endurance.	//pure melee class check the, other check more
+	IS_CLASS_BARD2                                                            = 49574, //		
+	IS_NOT_CLASS_BARD                                                         = 49575, //		
+	HAS_NO_FURIOUS_RAMPAGE_BUFF                                               = 49612, // This ability cannot be activated while Furious Rampage is active.	
+	IS_END_OR_MANA_BELOW_30_PCT2                                              = 49809, // You can only perform this solo if you have less than 30% mana or endurance.	
+	HAS_NO_HARMONIOUS_PRECISION_BUFF                                          = 50003, // This spell will not work if you have the Harmonious Precision line active.	
+	HAS_NO_HARMONIOUS_EXPANSE_BUFF                                            = 50009, // This spell will not work if you have the Harmonious Expanse line active.
+	UNKNOWN_99999                                                             = 99999, // | caster restriction | works will spell 27672 Strike of Ire
+};
+
+enum NegateSpellEffectType
+{
+	NEGATE_SPA_ALL_BONUSES                = 0,
+	NEGATE_SPA_SPELLBONUS                 = 1,
+	NEGATE_SPA_ITEMBONUS                  = 2,
+	NEGATE_SPA_SPELLBONUS_AND_ITEMBONUS   = 3,
+	NEGATE_SPA_AABONUS                    = 4,
+	NEGATE_SPA_SPELLBONUS_AND_AABONUS     = 5,
+	NEGATE_SPA_ITEMBONUS_AND_AABONUS      = 6,
+};
+//Used for rule RuleI(Spells, ReflectType))
+enum ReflectSpellType
+{
+	REFLECT_DISABLED                  = 0,
+	REFLECT_SINGLE_TARGET_SPELLS_ONLY = 1,
+	REFLECT_ALL_PLAYER_SPELLS         = 2,
+	RELFECT_ALL_SINGLE_TARGET_SPELLS  = 3,
+	REFLECT_ALL_SPELLS                = 4,
 };
 
 enum SpellTypes : uint32
@@ -227,7 +564,7 @@ const uint32 SPELL_TYPES_INNATE = (SpellType_Nuke | SpellType_Lifetap | SpellTyp
 // These should not be used to determine spell category..
 // They are a graphical affects (effects?) index only
 // TODO: import sai list
-enum SpellAffectIndex {
+enum spell_affect_index {
 	SAI_Summon_Mount_Unclass	= -1,
 	SAI_Direct_Damage			= 0,
 	SAI_Heal_Cure				= 1,
@@ -426,7 +763,7 @@ typedef enum {
 //#define SE_TransferItem				60	// not used
 #define SE_Identify						61	// implemented
 //#define SE_ItemID						62	// not used
-#define SE_WipeHateList					63	// implemented
+#define SE_WipeHateList					63	// implemented, @Memblur, chance to wipe hate list of target, base: pct chance, limit: none, max: ? (not implemented), Note: caster level and CHA add to pct chance
 #define SE_SpinTarget					64	// implemented - TO DO: Not sure stun portion is working correctly
 #define SE_InfraVision					65	// implemented
 #define SE_UltraVision					66	// implemented
@@ -481,7 +818,7 @@ typedef enum {
 #define SE_Hunger						115	// implemented - Song of Sustenance
 #define SE_CurseCounter					116	// implemented
 #define SE_MagicWeapon					117	// implemented - makes weapon magical
-#define SE_Amplification				118	// implemented - Harmonize/Amplification (stacks with other singing mods)
+#define SE_Amplification				118	// implemented, @Song, stackable singing mod, base: mod%, limit: none, max: none, Note: Can focus itself.
 #define SE_AttackSpeed3					119	// implemented
 #define SE_HealRate						120	// implemented - reduces healing by a %
 #define SE_ReverseDS					121 // implemented
@@ -514,14 +851,14 @@ typedef enum {
 #define SE_StackingCommand_Block		148 // implemented?
 #define SE_StackingCommand_Overwrite	149 // implemented?
 #define SE_DeathSave					150 // implemented
-#define SE_SuspendPet					151	// *not implemented as bonus
+#define SE_SuspendPet					151	// implemented, @Pet, allow caster to have an extra suspended pet, base: 0=no buffs/items 1=buffs+items, limit: none, max: none
 #define SE_TemporaryPets				152	// implemented
 #define SE_BalanceHP					153 // implemented
-#define SE_DispelDetrimental			154 // implemented
+#define SE_DispelDetrimental			154 // implemented, @Dispel, removes only detrimental effects on a target, base: pct chance (950=95%), limit: none, max: none
 #define SE_SpellCritDmgIncrease			155 // implemented - no known live spells use this currently
 #define SE_IllusionCopy					156	// implemented - Deception
-#define SE_SpellDamageShield			157	// implemented - Petrad's Protection
-#define SE_Reflect						158 // implemented
+#define SE_SpellDamageShield			157	// implemented, @DS, causes non-melee damage on caster of a spell, base: Amt DS (negative), limit: none, max: unknown (same as base but +)
+#define SE_Reflect						158 // implemented, @SpellMisc, reflect casted detrimental spell back at caster, base: chance pct, limit: resist modifier (positive value reduces resists), max: pct of base dmg mod (50=50pct of base)
 #define SE_AllStats						159	// implemented
 //#define SE_MakeDrunk					160 // *not implemented - Effect works entirely client side (Should check against tolerance)
 #define SE_MitigateSpellDamage			161	// implemented - rune with max value
@@ -542,7 +879,7 @@ typedef enum {
 #define SE_DualWieldChance				176	// implemented
 #define SE_DoubleAttackChance			177	// implemented
 #define SE_MeleeLifetap					178	// implemented
-#define SE_AllInstrumentMod				179	// implemented
+#define SE_AllInstrumentMod				179	// implemented, @Song, set mod for ALL instrument/singing skills that will be used if higher then item mods, base: mod%, limit: none, max: none
 #define SE_ResistSpellChance			180	// implemented
 #define SE_ResistFearChance				181	// implemented
 #define SE_HundredHands					182	// implemented
@@ -572,8 +909,8 @@ typedef enum {
 #define SE_AETaunt						206	// implemented
 #define SE_FleshToBone					207	// implemented
 //#define SE_PurgePoison				208	// not used
-#define SE_DispelBeneficial				209 // implemented
-//#define SE_PetShield					210	// *not implemented
+#define SE_DispelBeneficial				209 // implemented, @Dispel, removes only beneficial effects on a target, base: pct chance (950=95%), limit: none, max: none
+#define SE_PetShield					210	// implmented, @ShieldAbility, allows pet to 'shield' owner for 50 pct of damage taken for a duration, base: Time multiplier 1=12 seconds, 2=24 ect, limit: mitigation on pet owner override (not on live), max: mitigation on pet overide (not on live) 
 #define SE_AEMelee						211	// implemented TO DO: Implement to allow NPC use (client only atm).
 #define SE_FrenziedDevastation			212	// implemented - increase spell criticals + all DD spells cast 2x mana.
 #define SE_PetMaxHP						213	// implemented[AA] - increases the maximum hit points of your pet
@@ -593,7 +930,7 @@ typedef enum {
 #define SE_ReduceSkillTimer				227	// implemented
 #define SE_ReduceFallDamage				228	// implented - reduce the damage that you take from falling
 #define SE_PersistantCasting			229 // implemented
-#define SE_ExtendedShielding			230	// not used as bonus - increase range of /shield ability
+#define SE_ExtendedShielding			230	// implemented, @ShieldAbility, extends the range of your /shield ability by an amount of distance, base: distance units, limit: none, max: none
 #define SE_StunBashChance				231	// implemented - increase chance to stun from bash.
 #define SE_DivineSave					232	// implemented (base1 == % chance on death to insta-res) (base2 == spell cast on save)
 #define SE_Metabolism					233	// implemented - Modifies food/drink consumption rates.
@@ -605,7 +942,7 @@ typedef enum {
 #define SE_FeignedCastOnChance			239	// implemented - ability gives you an increasing chance for your feigned deaths to not be revealed by spells cast upon you.
 //#define SE_StringUnbreakable			240	// not used [Likely related to above - you become immune to feign breaking on a resisted spell and have a good chance of feigning through a spell that successfully lands upon you.]
 #define SE_ImprovedReclaimEnergy		241	// implemented - increase the amount of mana returned to you when reclaiming your pet.
-#define SE_IncreaseChanceMemwipe		242	// implemented - increases the chance to wipe hate with memory blurr
+#define SE_IncreaseChanceMemwipe		242	// implemented - @Memblur, increases the chance to wipe hate with memory blurr, base: chance pct, limit: none, max: none, Note: Mods final blur chance after other bonuses added.
 #define SE_CharmBreakChance				243	// implemented - Total Domination
 #define	SE_RootBreakChance				244	// implemented[AA] reduce the chance that your root will break.
 #define SE_TrapCircumvention			245	// *not implemented[AA] - decreases the chance that you will set off a trap when opening a chest
@@ -618,13 +955,13 @@ typedef enum {
 #define SE_FrontalBackstabChance		252	// implemented[AA] - chance to perform a full damage backstab from front.
 #define SE_FrontalBackstabMinDmg		253	// implemented[AA] - allow a frontal backstab for mininum damage.
 #define SE_Blank						254 // implemented
-#define SE_ShieldDuration				255	// not implemented as bonus - increases duration of /shield
+#define SE_ShieldDuration				255	// implemented, , @ShieldAbility, extends the duration of your /shield ability, base: seconds, limit: none, max: none
 #define SE_ShroudofStealth				256	// implemented
 #define SE_PetDiscipline				257 // not implemented as bonus - /pet hold - official name is GivePetHold
 #define SE_TripleBackstab				258 // implemented[AA] - chance to perform a triple backstab
 #define SE_CombatStability				259 // implemented[AA] - damage mitigation
-#define SE_AddSingingMod				260 // implemented[AA] - Instrument/Singing Mastery, base1 is the mod, base2 is the ItemType
-#define SE_SongModCap					261	// implemented[AA] - Song Mod cap increase (no longer used on live)
+#define SE_AddSingingMod				260 // implemented, @Song, set mod for specific instrument/singing skills that will be used if higher then item mods, base: mod%, limit: ItemType ID, max: none
+#define SE_SongModCap					261	// implemented, @Song, raise max song modifier cap, base: amt, limit: none, max: none, Note: No longer used on live
 #define SE_RaiseStatCap					262 // implemented
 #define SE_TradeSkillMastery			263	// implemented - lets you raise more than one tradeskill above master.
 #define SE_HastenedAASkill			    264 // implemented
@@ -633,7 +970,7 @@ typedef enum {
 #define SE_AddPetCommand				267 // implemented - sets command base2 to base1
 #define SE_ReduceTradeskillFail			268 // implemented - reduces chance to fail with given tradeskill by a percent chance
 #define SE_MaxBindWound					269	// implemented[AA] - Increase max HP you can bind wound.
-#define SE_BardSongRange				270	// implemented[AA] - increase range of beneficial bard songs (Sionachie's Crescendo)
+#define SE_BardSongRange				270	// implemented, @Song, increase range of beneficial bard songs, base: mod%, limit: none, max: none , Note: example Sionachie's Crescendo
 #define SE_BaseMovementSpeed			271 // implemented[AA] - mods basemove speed, doesn't stack with other move mods
 #define SE_CastingLevel2				272 // implemented
 #define SE_CriticalDoTChance			273	// implemented
@@ -654,7 +991,7 @@ typedef enum {
 #define SE_SkillAttackProc				288	// implemented[AA] - Chance to proc spell on skill attack usage (ex. Dragon Punch)
 #define SE_CastOnFadeEffect				289 // implemented - Triggers only if fades after natural duration.
 #define SE_IncreaseRunSpeedCap			290	// implemented[AA] - increases run speed over the hard cap
-#define SE_Purify						291 // implemented - Removes determental effects
+#define SE_Purify						291 // implemented, @Dispel, remove up specified amount of detiremental spells, base: amt removed, limit: none, max: none, Note: excluding charm, fear, resurrection, and revival sickness  
 #define SE_StrikeThrough2				292	// implemented[AA] - increasing chance of bypassing an opponent's special defenses, such as dodge, block, parry, and riposte.
 #define SE_FrontalStunResist			293	// implemented[AA] - Reduce chance to be stunned from front. -- live descriptions sounds like this isn't limited to frontal anymore
 #define SE_CriticalSpellChance			294 // implemented - increase chance to critical hit and critical damage modifier.
@@ -671,7 +1008,7 @@ typedef enum {
 #define SE_MitigateDamageShield			305 // implemented - off hand attacks only (Shielding Resistance)
 //#define SE_ArmyOfTheDead				306 // *not implemented NecroAA - This ability calls up to five shades of nearby corpses back to life to serve the necromancer. The soulless abominations will mindlessly fight the target until called back to the afterlife some time later. The first rank summons up to three shades that serve for 60 seconds, and each additional rank adds one more possible shade and increases their duration by 15 seconds
 //#define SE_Appraisal					307 // *not implemented Rogue AA - This ability allows you to estimate the selling price of an item you are holding on your cursor.
-#define SE_SuspendMinion				308 // implemented
+#define SE_ZoneSuspendMinion			308 // implemented, @Pet, allow suspended pets to be resummoned upon zoning, base: 1, limit: none, max: none, Calc: Bool
 #define SE_GateCastersBindpoint			309 // implemented - Gate to casters bind point
 #define SE_ReduceReuseTimer				310 // implemented, @Fc, On Caster, disc reuse time mod, base: milliseconds
 #define SE_LimitCombatSkills			311 // implemented, @Ff, Include or exclude combat skills or procs (non-memorizable spells) from being focused, base1: 0=Exclude if proc 1=Allow only if proc
@@ -729,7 +1066,7 @@ typedef enum {
 #define SE_BandolierSlots				363	// *not implemented[AA] 'Battle Ready' expands the bandolier by one additional save slot per rank.
 #define SE_TripleAttackChance			364	// implemented
 #define SE_ProcOnSpellKillShot			365	// implemented - chance to trigger a spell on kill when the kill is caused by a specific spell with this effect in it (10470 Venin)
-#define SE_GroupShielding				366	// *not implemented[AA] This gives you /shieldgroup
+//#define SE_GroupShielding				366	// *not implemented[AA] This gives you /shieldgroup
 #define SE_SetBodyType					367	// implemented - set body type of base1 so it can be affected by spells that are limited to that type (Plant, Animal, Undead, etc)
 //#define SE_FactionMod					368	// *not implemented - increases faction with base1 (faction id, live won't match up w/ ours) by base2
 #define SE_CorruptionCounter			369	// implemented
@@ -745,20 +1082,20 @@ typedef enum {
 #define SE_ShadowStepDirectional		379 // implemented - handled by client
 #define SE_Knockdown					380 // implemented - small knock back(handled by client)
 //#define SE_KnockTowardCaster			381	// *not implemented (Call of Hither) knocks you back to caster (value) distance units infront
-#define SE_NegateSpellEffect			382 // implemented - negates specific spell bonuses for duration of the debuff.
+#define SE_NegateSpellEffect			382 // implemented, @Debuff, negates specific spell effect benefits for the duration of the debuff and prevent non-duration spell effect from working, base: see NegateSpellEffecttype Enum, limit: SPA id, max: none
 #define SE_SympatheticProc				383 // implemented, @Fc, On Caster, cast on spell use, base: variable proc chance on cast time, limit: spellid
 #define SE_Leap							384	// implemented - Leap effect, ie stomping leap
 #define SE_LimitSpellGroup				385	// implemented, @Ff, Spell group(s) that a spell focus can require or exclude, base1: spellgroup id, Include: Positive Exclude: Negative
 #define SE_CastOnCurer					386 // implemented - Casts a spell on the person curing
 #define SE_CastOnCure					387 // implemented - Casts a spell on the cured person
 #define SE_SummonCorpseZone				388 // implemented - summons a corpse from any zone(nec AA)
-#define SE_FcTimerRefresh				389 // implemented, @Fc, On Caster, reset all recast timers, base: 1
-//#define SE_FcTimerLockout				390 // *not implemented - Sets recast timers to specific value, focus limited.
+#define SE_FcTimerRefresh				389 // implemented, @Fc, On Caster, reset all recast timers, base: 1, Note: Applied from casted spells only
+#define SE_FcTimerLockout				390 // implemented, @Fc, On Caster, set a spell to be on recast timer, base: recast duration milliseconds, Note: Applied from casted spells only
 #define SE_LimitManaMax					391	// implemented, @Ff, Mininum mana of spell that can be focused, base1: mana amt
 #define SE_FcHealAmt					392 // implemented, @Fc, On Caster, spell healing mod flat amt, base: amt
-#define SE_FcHealPctIncoming			393 // implemented, @Fc, On Target, heal received critical chance mod, base: chance pct
+#define SE_FcHealPctIncoming			393 // implemented, @Fc, On Target, heal received mod pct, base: pct, limit: random max pct
 #define SE_FcHealAmtIncoming			394 // implemented, @Fc, On Target, heal received mod flat amt, base: amt
-#define SE_FcHealPctCritIncoming		395 // implemented, @Fc, On Target, heal received mod pct, base: pct
+#define SE_FcHealPctCritIncoming		395 // implemented, @Fc, On Target, heal received mod pct, base: pct, limit: random max pct
 #define SE_FcHealAmtCrit				396 // implemented, @Fc, On Caster, spell healing mod flat amt, base: amt
 #define SE_PetMeleeMitigation			397 // implemented[AA] - additional mitigation to your pets. Adds AC
 #define SE_SwarmPetDuration				398 // implemented - Affects the duration of swarm pets
@@ -805,8 +1142,8 @@ typedef enum {
 #define SE_Assassinate					439 // implemented[AA] - Assassinate damage
 #define SE_FinishingBlowLvl				440 // implemented[AA] - Sets the level Finishing blow can be triggered on an NPC
 #define SE_DistanceRemoval				441 // implemented - Buff is removed from target when target moves X amount of distance away from where initially hit.
-#define SE_TriggerOnReqTarget			442 // implemented - triggers a spell which a certain criteria are met (below X amount of hp,mana,end, number of pets on hatelist)
-#define SE_TriggerOnReqCaster			443 // implemented - triggers a spell which a certain criteria are met (below X amount of hp,mana,end, number of pets on hatelist)
+#define SE_TriggerOnReqTarget			442 // implemented, @SpellTrigger, triggers a spell when Target Requirement conditions are met (see enum SpellRestriction for IDs), base: spellid, limit: SpellRestriction ID, max: none, Note: Usually cast on a target
+#define SE_TriggerOnReqCaster			443 // implemented, @SpellTrigger, triggers a spell when Caster Requirement conditions are met (see enum SpellRestriction for IDs), base: spellid, limit: SpellRestriction ID, max: none, Note: Usually self only
 #define SE_ImprovedTaunt				444 // implemented - Locks Aggro On Caster and Decrease other Players Aggro by X% on NPC targets below level Y
 //#define SE_AddMercSlot				445 // *not implemented[AA] - [Hero's Barracks] Allows you to conscript additional mercs.
 #define SE_AStacker						446 // implementet - bufff stacking blocker (26219 | Qirik's Watch)
@@ -874,8 +1211,8 @@ typedef enum {
 #define SE_Fc_Amplify_Amt				508 // implemented, @Fc, On Caster, damage-heal-dot mod flat amt, base: amt
 #define SE_Health_Transfer				509 // implemented - exchange health for damage or healing on a target. ie Lifeburn/Act of Valor
 #define SE_Fc_ResistIncoming			510 // implemented, @Fc, On Target, resist modifier, base: amt
-//#define SE_Ff_FocusTimerMin			511 //
-#define SE_Proc_Timer_Modifier 			512 // implemented - spell trigger limiter used currently with SPA 481, ie. limit to 1 proc every 1.5 seconds (base=1 base2=1500).
+#define SE_Ff_FocusTimerMin				511 // implemented, @Ff, sets a recast time until focus can be used again, base: 1, limit: time ms, Note:  ie. limit to 1 trigger every 1.5 seconds 
+#define SE_Proc_Timer_Modifier 			512 // implemented - limits procs per amount of a time based on timer value, base: 1, limit: time ms, Note:, ie limit to 1 proc every 55 seconds)
 //#define SE_Mana_Max_Percent			513 //
 //#define SE_Endurance_Max_Percent		514 //
 #define SE_AC_Avoidance_Max_Percent		515 // implemented - stackable avoidance modifier
@@ -918,44 +1255,44 @@ struct SPDat_Spell_Struct
 /* 007 */	char cast_on_other[64]; // Message when spell is cast on someone else -- CASTEDOTHERTXT
 /* 008 */	char spell_fades[64]; // Spell fades -- SPELLGONE
 /* 009 */	float range; // -- RANGE
-/* 010 */	float aoerange; // -- IMPACTRANGE
-/* 011 */	float pushback; // -- OUTFORCE
-/* 012 */	float pushup; // -- UPFORCE
+/* 010 */	float aoe_range; // -- IMPACTRANGE
+/* 011 */	float push_back; // -- OUTFORCE
+/* 012 */	float push_up; // -- UPFORCE
 /* 013 */	uint32 cast_time; // Cast time -- CASTINGTIME
 /* 014 */	uint32 recovery_time; // Recovery time -- RECOVERYDELAY
 /* 015 */	uint32 recast_time; // Recast same spell time -- SPELLDELAY
-/* 016 */	uint32 buffdurationformula; // -- DURATIONBASE
-/* 017 */	uint32 buffduration; // -- DURATIONCAP
-/* 018 */	uint32 AEDuration;	// sentinel, rain of something -- IMPACTDURATION
+/* 016 */	uint32 buff_duration_formula; // -- DURATIONBASE
+/* 017 */	uint32 buff_duration; // -- DURATIONCAP
+/* 018 */	uint32 aoe_duration;	// sentinel, rain of something -- IMPACTDURATION
 /* 019 */	uint16 mana; // Mana Used -- MANACOST
-/* 020 */	int base[EFFECT_COUNT];	//various purposes -- BASEAFFECT1 .. BASEAFFECT12
-/* 032 */	int base2[EFFECT_COUNT]; //various purposes -- BASE_EFFECT2_1 ... BASE_EFFECT2_12
-/* 044 */	int32 max[EFFECT_COUNT]; // -- AFFECT1CAP ... AFFECT12CAP
+/* 020 */	int base_value[EFFECT_COUNT];	//various purposes -- BASEAFFECT1 .. BASEAFFECT12
+/* 032 */	int limit_value[EFFECT_COUNT]; //various purposes -- BASE_EFFECT2_1 ... BASE_EFFECT2_12
+/* 044 */	int32 max_value[EFFECT_COUNT]; // -- AFFECT1CAP ... AFFECT12CAP
 /* 056 */	//uint16 icon; // Spell icon -- IMAGENUMBER
 /* 057 */	//uint16 memicon; // Icon on membarthing -- MEMIMAGENUMBER
-/* 058 */	int32 components[4]; // reagents -- EXPENDREAGENT1 ... EXPENDREAGENT4
-/* 062 */	int component_counts[4]; // amount of regents used -- EXPENDQTY1 ... EXPENDQTY4
-/* 066 */	int NoexpendReagent[4];	// focus items (Need but not used; Flame Lick has a Fire Beetle Eye focus.)
+/* 058 */	int32 component[4]; // reagents -- EXPENDREAGENT1 ... EXPENDREAGENT4
+/* 062 */	int component_count[4]; // amount of regents used -- EXPENDQTY1 ... EXPENDQTY4
+/* 066 */	int no_expend_reagent[4];	// focus items (Need but not used; Flame Lick has a Fire Beetle Eye focus.)
 											// If it is a number between 1-4 it means components[number] is a focus and not to expend it
 											// If it is a valid itemid it means this item is a focus as well
 											// -- NOEXPENDREAGENT1 ... NOEXPENDREAGENT4
 /* 070 */	uint16 formula[EFFECT_COUNT]; // Spell's value formula -- LEVELAFFECT1MOD ... LEVELAFFECT12MOD
 /* 082 */	//int LightType; // probaly another effecttype flag -- LIGHTTYPE
-/* 083 */	int8 goodEffect; //0=detrimental, 1=Beneficial, 2=Beneficial, Group Only -- BENEFICIAL
-/* 084 */	int Activated; // probably another effecttype flag -- ACTIVATED
-/* 085 */	int resisttype; // -- RESISTTYPE
-/* 086 */	int effectid[EFFECT_COUNT];	// Spell's effects -- SPELLAFFECT1 ... SPELLAFFECT12
-/* 098 */	SpellTargetType targettype;	// Spell's Target -- TYPENUMBER
-/* 099 */	int basediff; // base difficulty fizzle adjustment -- BASEDIFFICULTY
+/* 083 */	int8 good_effect; //0=detrimental, 1=Beneficial, 2=Beneficial, Group Only -- BENEFICIAL
+/* 084 */	int activated; // probably another effecttype flag -- ACTIVATED
+/* 085 */	int resist_type; // -- RESISTTYPE
+/* 086 */	int effect_id[EFFECT_COUNT];	// Spell's effects -- SPELLAFFECT1 ... SPELLAFFECT12
+/* 098 */	SpellTargetType target_type;	// Spell's Target -- TYPENUMBER
+/* 099 */	int base_difficulty; // base difficulty fizzle adjustment -- BASEDIFFICULTY
 /* 100 */	EQ::skills::SkillType skill; // -- CASTINGSKILL
-/* 101 */	int8 zonetype; // 01=Outdoors, 02=dungeons, ff=Any -- ZONETYPE
-/* 102 */	int8 EnvironmentType; // -- ENVIRONMENTTYPE
-/* 103 */	int8 TimeOfDay; // -- TIMEOFDAY
+/* 101 */	int8 zone_type; // 01=Outdoors, 02=dungeons, ff=Any -- ZONETYPE
+/* 102 */	int8 environment_type; // -- ENVIRONMENTTYPE
+/* 103 */	int8 time_of_day; // -- TIMEOFDAY
 /* 104 */	uint8 classes[PLAYER_CLASS_COUNT]; // Classes, and their min levels -- WARRIORMIN ... BERSERKERMIN
-/* 120 */	uint8 CastingAnim; // -- CASTINGANIM
+/* 120 */	uint8 casting_animation; // -- CASTINGANIM
 /* 121 */	//uint8 TargetAnim; // -- TARGETANIM
 /* 122 */	//uint32 TravelType; // -- TRAVELTYPE
-/* 123 */	uint16 SpellAffectIndex; // -- SPELLAFFECTINDEX
+/* 123 */	uint16 spell_affect_index; // -- SPELLAFFECTINDEX
 /* 124 */	int8 disallow_sit; // 124: high-end Yaulp spells (V, VI, VII, VIII [Rk 1, 2, & 3], & Gallenite's Bark of Fury -- CANCELONSIT
 /* 125 */	int8 deity_agnostic;// 125: Words of the Skeptic -- DEITY_AGNOSTIC
 /* 126 */	int8 deities[16];	// Deity check. 201 - 216 per http://www.eqemulator.net/wiki/wikka.php?wakka=DeityList
@@ -967,50 +1304,50 @@ struct SPDat_Spell_Struct
 /* 144 */	int16 new_icon;	// Spell icon used by the client in uifiles/default/spells??.tga, both for spell gems & buff window. Looks to depreciate icon & memicon -- NEW_ICON
 /* 145 */	//int16 spellanim; // Doesn't look like it's the same as #doanim, so not sure what this is, particles I think -- SPELL_EFFECT_INDEX
 /* 146 */	bool uninterruptable;	// Looks like anything != 0 is uninterruptable. Values are mostly -1, 0, & 1 (Fetid Breath = 90?) -- NO_INTERRUPT
-/* 147 */	int16 ResistDiff; // -- RESIST_MOD
-/* 148 */	bool dot_stacking_exempt; // -- NOT_STACKABLE_DOT
+/* 147 */	int16 resist_difficulty; // -- RESIST_MOD
+/* 148 */	bool unstackable_dot; // -- NOT_STACKABLE_DOT
 /* 149 */	//int deletable; // -- DELETE_OK
-/* 150 */	uint16 RecourseLink; // -- REFLECT_SPELLINDEX
+/* 150 */	uint16 recourse_link; // -- REFLECT_SPELLINDEX
 /* 151 */	bool no_partial_resist;	// 151: -1, 0, or 1 -- NO_PARTIAL_SAVE
 /* 152 */	//bool small_targets_only; // -- SMALL_TARGETS_ONLY
 /* 153 */	//bool uses_persistent_particles; // -- USES_PERSISTENT_PARTICLES
 /* 154 */	int8 short_buff_box;	// != 0, goes to short buff box. -- BARD_BUFF_BOX
-/* 155 */	int descnum; // eqstr of description of spell -- DESCRIPTION_INDEX
-/* 156 */	int typedescnum; // eqstr of type description -- PRIMARY_CATEGORY
-/* 157 */	int effectdescnum; // eqstr of effect description -- SECONDARY_CATEGORY_1
+/* 155 */	int description_id; // eqstr of description of spell -- DESCRIPTION_INDEX
+/* 156 */	int type_description_id; // eqstr of type description -- PRIMARY_CATEGORY
+/* 157 */	int effect_description_id; // eqstr of effect description -- SECONDARY_CATEGORY_1
 /* 158 */	//int secondary_category_2;   //Category Desc ID 3 -- SECONDARY_CATEGORY_2
 /* 159 */	bool npc_no_los; // -- NO_NPC_LOS
-/* 160 */	//bool feedbackable; // -- FEEDBACKABLE
+/* 160 */	bool feedbackable; // -- FEEDBACKABLE
 /* 161 */	bool reflectable; // -- REFLECTABLE
-/* 162 */	int bonushate; // -- HATE_MOD
+/* 162 */	int bonus_hate; // -- HATE_MOD
 /* 163 */	//int resist_per_level; // -- RESIST_PER_LEVEL
 /* 164 */	//int resist_cap; // for most spells this appears to mimic ResistDiff -- RESIST_CAP
 /* 165 */	bool ldon_trap; //Flag found on all LDON trap / chest related spells. -- AFFECT_INANIMATE
-/* 166 */	int EndurCost; // -- STAMINA_COST
-/* 167 */	int8 EndurTimerIndex; // bad name, used for all spells -- TIMER_INDEX
-/* 168 */	bool IsDisciplineBuff; //Will goto the combat window when cast -- IS_SKILL
+/* 166 */	int endurance_cost; // -- STAMINA_COST
+/* 167 */	int8 timer_id; // bad name, used for all spells -- TIMER_INDEX
+/* 168 */	bool is_discipline; //Will goto the combat window when cast -- IS_SKILL
 /* 169 - 172*/ //These are zero for ALL spells, also removed from live -- ATTACK_OPENING, DEFENSE_OPENING, SKILL_OPENING, NPC_ERROR_OPENING
-/* 173 */	int HateAdded; // -- SPELL_HATE_GIVEN
-/* 174 */	int EndurUpkeep; // -- ENDUR_UPKEEP
-/* 175 */	int numhitstype; // defines which type of behavior will tick down the numhit counter. -- LIMITED_USE_TYPE
-/* 176 */	int numhits; // -- LIMITED_USE_COUNT
-/* 177 */	int pvpresistbase; // -- PVP_RESIST_MOD
-/* 178 */	int pvpresistcalc; // -- PVP_RESIST_PER_LEVEL
-/* 179 */	int pvpresistcap; // -- PVP_RESIST_CAP
+/* 173 */	int hate_added; // -- SPELL_HATE_GIVEN
+/* 174 */	int endurance_upkeep; // -- ENDUR_UPKEEP
+/* 175 */	int hit_number_type; // defines which type of behavior will tick down the numhit counter. -- LIMITED_USE_TYPE
+/* 176 */	int hit_number; // -- LIMITED_USE_COUNT
+/* 177 */	int pvp_resist_base; // -- PVP_RESIST_MOD
+/* 178 */	int pvp_resist_per_level; // -- PVP_RESIST_PER_LEVEL
+/* 179 */	int pvp_resist_cap; // -- PVP_RESIST_CAP
 /* 180 */	int spell_category; // -- GLOBAL_GROUP
-/* 181 */	//int pvp_duration; // buffdurationformula for PvP -- PVP_DURATION
-/* 182 */	//int pvp_duration_cap; // buffduration for PvP -- PVP_DURATION_CAP
+/* 181 */	int pvp_duration; // buffdurationformula for PvP -- PVP_DURATION
+/* 182 */	int pvp_duration_cap; // buffduration for PvP -- PVP_DURATION_CAP
 /* 183 */	int pcnpc_only_flag; // valid values are 0, 1 = PCs (and mercs), and 2 = NPCs (and not mercs) -- PCNPC_ONLY_FLAG
 /* 184 */	bool cast_not_standing; // this is checked in the client's EQ_Spell::IsCastWhileInvisSpell, this also blocks SE_InterruptCasting from affecting this spell -- CAST_NOT_STANDING
 /* 185 */	bool can_mgb; // 0=no, -1 or 1 = yes -- CAN_MGB
 /* 186 */	int dispel_flag; // -- NO_DISPELL
 /* 187 */	//int npc_category; // -- NPC_MEM_CATEGORY
 /* 188 */	//int npc_usefulness; // -- NPC_USEFULNESS
-/* 189 */	int MinResist; // -- MIN_RESIST
-/* 190 */	int MaxResist; // -- MAX_RESIST
+/* 189 */	int min_resist; // -- MIN_RESIST
+/* 190 */	int max_resist; // -- MAX_RESIST
 /* 191 */	uint8 viral_targets; // -- MIN_SPREAD_TIME
 /* 192 */	uint8 viral_timer; // -- MAX_SPREAD_TIME
-/* 193 */	int NimbusEffect; // -- DURATION_PARTICLE_EFFECT
+/* 193 */	int nimbus_effect; // -- DURATION_PARTICLE_EFFECT
 /* 194 */	float directional_start; //Cone Start Angle: -- CONE_START_ANGLE
 /* 195 */	float directional_end; // Cone End Angle: -- CONE_END_ANGLE
 /* 196 */   bool sneak; // effect can only be used if sneaking (rogue 'Daggerfall' ect) -- SNEAK_ATTACK
@@ -1019,35 +1356,35 @@ struct SPDat_Spell_Struct
 /* 199 */	//bool show_wear_off_message; // -- SHOW_WEAR_OFF_MESSAGE
 /* 200 */	bool suspendable; // buff is suspended in suspended buff zones -- IS_COUNTDOWN_HELD
 /* 201 */	int viral_range; // -- SPREAD_RADIUS
-/* 202 */	int songcap; // individual song cap -- BASE_EFFECTS_FOCUS_CAP
+/* 202 */	int song_cap; // individual song cap -- BASE_EFFECTS_FOCUS_CAP
 /* 203 */	//bool stacks_with_self; // -- STACKS_WITH_SELF
 /* 204 */	//int not_shown_to_player; // client skips this -- NOT_SHOWN_TO_PLAYER
 /* 205 */	bool no_block; // -- NO_BUFF_BLOCK
 /* 206 */	//int8 anim_variation; // -- ANIM_VARIATION
-/* 207 */	int spellgroup; // -- SPELL_GROUP
+/* 207 */	int spell_group; // -- SPELL_GROUP
 /* 208 */	int rank; //increments AA effects with same name -- SPELL_GROUP_RANK
 /* 209 */	int no_resist; //makes spells unresistable, which makes charms unbreakable as well. -- NO_RESIST
 /* 210 */	// bool allow_spellscribe; // -- ALLOW_SPELLSCRIBE
-/* 211 */	int CastRestriction; //Various restriction categories for spells most seem targetable race related but have also seen others for instance only castable if target hp 20% or lower or only if target out of combat -- SPELL_REQ_ASSOCIATION_ID
-/* 212 */	bool AllowRest; // -- BYPASS_REGEN_CHECK
-/* 213 */	bool InCombat; //Allow spell if target is in combat -- CAN_CAST_IN_COMBAT
-/* 214 */   bool OutofCombat; //Allow spell if target is out of combat -- CAN_CAST_OUT_OF_COMBAT
+/* 211 */	int cast_restriction; //Various restriction categories for spells most seem targetable race related but have also seen others for instance only castable if target hp 20% or lower or only if target out of combat -- SPELL_REQ_ASSOCIATION_ID
+/* 212 */	bool allow_rest; // -- BYPASS_REGEN_CHECK
+/* 213 */	bool can_cast_in_combat; //Allow spell if target is in combat -- CAN_CAST_IN_COMBAT
+/* 214 */   bool can_cast_out_of_combat; //Allow spell if target is out of combat -- CAN_CAST_OUT_OF_COMBAT
 /* 215 */	//bool show_dot_message; // -- SHOW_DOT_MESSAGE
 /* 216 */	//bool invalid; // -- INVALID
 /* 217 */   int override_crit_chance; //Places a cap on the max chance to critical -- OVERRIDE_CRIT_CHANCE
-/* 218 */	int aemaxtargets;  //Is used for various AE effects -- MAX_TARGETS
+/* 218 */	int aoe_max_targets;  //Is used for various AE effects -- MAX_TARGETS
 /* 219 */	int no_heal_damage_item_mod; // -- NO_HEAL_DAMAGE_ITEM_MOD
-/* 220 */	//int caster_requirement_id; // -- CASTER_REQUIREMENT_ID
+/* 220 */	int caster_requirement_id; // -- CASTER_REQUIREMENT_ID
 /* 221 */	int spell_class; // -- SPELL_CLASS
 /* 222 */	int spell_subclass; // -- SPELL_SUBCLASS
 /* 223 */	//int ai_valid_targets; // -- AI_VALID_TARGETS
-/* 224 */	bool persistdeath; // buff doesn't get stripped on death -- NO_STRIP_ON_DEATH
+/* 224 */	bool persist_death; // buff doesn't get stripped on death -- NO_STRIP_ON_DEATH
 /* 225 */	//float base_effects_focus_slope; // -- BASE_EFFECTS_FOCUS_SLOPE
 /* 226 */	//float base_effects_focus_offset; // -- BASE_EFFECTS_FOCUS_OFFSET
-/* 227 */	float min_dist; //spell power modified by distance from caster (Min Distance) -- DISTANCE_MOD_CLOSE_DIST
-/* 228 */	float min_dist_mod;  //spell power modified by distance from caster (Modifier at Min Distance) -- DISTANCE_MOD_CLOSE_MULT
-/* 229 */	float max_dist; //spell power modified by distance from caster (Max Distance) -- DISTANCE_MOD_FAR_DIST
-/* 230 */   float max_dist_mod; //spell power modified by distance from caster (Modifier at Max Distance) -- DISTANCE_MOD_FAR_MULT
+/* 227 */	float min_distance; //spell power modified by distance from caster (Min Distance) -- DISTANCE_MOD_CLOSE_DIST
+/* 228 */	float min_distance_mod;  //spell power modified by distance from caster (Modifier at Min Distance) -- DISTANCE_MOD_CLOSE_MULT
+/* 229 */	float max_distance; //spell power modified by distance from caster (Max Distance) -- DISTANCE_MOD_FAR_DIST
+/* 230 */   float max_distance_mod; //spell power modified by distance from caster (Modifier at Max Distance) -- DISTANCE_MOD_FAR_MULT
 /* The client also does this
  *  v26 = *(float *)&v4->DistanceModFarDist - *(float *)&v4->DistanceModCloseDist;
  *  if ( v26 > -0.00000011920929 && v26 < 0.00000011920929 )
@@ -1061,7 +1398,7 @@ struct SPDat_Spell_Struct
 /* 234 */	//bool only_during_fast_regen; // -- ONLY_DURING_FAST_REGEN
 /* 235 */	//bool is_beta_only; // -- IS_BETA_ONLY
 /* 236 */	//int spell_subgroup; // -- SPELL_SUBGROUP
-			uint8 DamageShieldType; // This field does not exist in spells_us.txt
+			uint8 damage_shield_type; // This field does not exist in spells_us.txt
 };
 
 extern const SPDat_Spell_Struct* spells;
@@ -1141,6 +1478,7 @@ bool IsPartialDeathSaveSpell(uint16 spell_id);
 bool IsShadowStepSpell(uint16 spell_id);
 bool IsSuccorSpell(uint16 spell_id);
 bool IsTeleportSpell(uint16 spell_id);
+bool IsTranslocateSpell(uint16 spell_id);
 bool IsGateSpell(uint16 spell_id);
 bool IsPlayerIllusionSpell(uint16 spell_id); // seveian 2008-09-23
 bool IsLDoNObjectSpell(uint16 spell_id);
@@ -1173,7 +1511,13 @@ bool IsBardOnlyStackEffect(int effect);
 bool IsCastWhileInvis(uint16 spell_id);
 bool IsEffectIgnoredInStacking(int spa);
 bool IsFocusLimit(int spa);
-bool SpellRequiresTarget(int targettype);
+bool SpellRequiresTarget(int target_type);
+bool IsVirusSpell(int32 spell_id);
+int GetViralMinSpreadTime(int32 spell_id);
+int GetViralMaxSpreadTime(int32 spell_id);
+int GetViralSpreadRange(int32 spell_id);
+bool IsInstrumentModAppliedToSpellEffect(int32 spell_id, int effect);
+uint32 GetProcLimitTimer(int32 spell_id, int proc_type);
 
 int CalcPetHp(int levelb, int classb, int STA = 75);
 int GetSpellEffectDescNum(uint16 spell_id);
@@ -1184,5 +1528,6 @@ int32 GetFuriousBash(uint16 spell_id);
 bool IsShortDurationBuff(uint16 spell_id);
 bool IsSpellUsableThisZoneType(uint16 spell_id, uint8 zone_type);
 const char *GetSpellName(uint16 spell_id);
+int GetSpellStatValue(uint32 spell_id, const char* stat_identifier, uint8 slot = 0);
 
 #endif

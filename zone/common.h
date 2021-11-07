@@ -22,8 +22,6 @@
 #define SEE_POSITION 0.5f	//ratio of GetSize() where NPCs try to see for LOS
 #define CHECK_LOS_STEP 1.0f
 
-#define MAX_SHIELDERS 2		//I dont know if this is based on a client limit
-
 #define ARCHETYPE_HYBRID	1
 #define ARCHETYPE_CASTER	2
 #define ARCHETYPE_MELEE		3
@@ -109,6 +107,8 @@
 #define WEAPON_STANCE_TYPE_MAX 2
 
 
+#define SHIELD_ABILITY_RECAST_TIME 180
+
 typedef enum {	//focus types
 	focusSpellHaste = 1,				//@Fc, SPA: 127, SE_IncreaseSpellHaste,				On Caster, cast time mod pct, base: pct
 	focusSpellDuration,					//@Fc, SPA: 128, SE_IncreaseSpellDuration,			On Caster, spell duration mod pct, base: pct
@@ -134,7 +134,7 @@ typedef enum {	//focus types
 	focusSwarmPetDuration,				//@Fc, SPA: 398, SE_SwarmPetDuration,				On Caster, swarm pet duration mod, base: milliseconds
 	focusReduceRecastTime,				//@Fc, SPA: 310, SE_ReduceReuseTimer,				On Caster, disc reuse time mod, base: milliseconds
 	focusBlockNextSpell,				//@Fc, SPA: 335, SE_BlockNextSpellFocus,			On Caster, chance to block next spell, base: chance
-	focusFcHealPctIncoming,				//@Fc, SPA: 395, SE_FcHealPctCritIncoming,			On Target, heal received mod pct, base: pct
+	focusFcHealPctIncoming,				//@Fc, SPA: 393, SE_FcHealPctIncoming,   			On Target, heal received mod pct, base: pct
 	focusFcDamageAmtIncoming,			//@Fc, SPA: 297, SE_FcDamageAmtIncoming,			On Target, damage taken flat amt, base: amt
 	focusFcSpellDamageAmtIncomingPC,	//@Fc, SPA: 484, SE_Fc_Spell_Damage_Amt_IncomingPC,	On Target, damage taken flat amt, base: amt	
 	focusFcCastSpellOnLand,				//@Fc, SPA: 481, SE_Fc_Cast_Spell_On_Land,			On Target, cast spell if hit by spell, base: chance pct, limit: spellid
@@ -143,14 +143,15 @@ typedef enum {	//focus types
 	focusIncreaseNumHits,				//@Fc, SPA: 421, SE_FcIncreaseNumHits,				On Caster, numhits mod flat amt, base: amt
 	focusFcLimitUse,					//@Fc, SPA: 420, SE_FcLimitUse,						On Caster, numhits mod pct, base: pct
 	focusFcMute,						//@Fc, SPA: 357, SE_FcMute,							On Caster, prevents spell casting, base: chance pct
-	focusFcTimerRefresh,				//@Fc, SPA: 389, SE_FcTimerRefresh,					On Caster, reset all recast timers, base: 1
+	focusFcTimerRefresh,				//@Fc, SPA: 389, SE_FcTimerRefresh,					On Caster, reset spell recast timer, base: 1
+	focusFcTimerLockout,				//@Fc, SPA: 390, SE_FcTimerLockout,					On Caster, set a spell to be on recast timer, base: recast duration milliseconds
 	focusFcStunTimeMod,					//@Fc, SPA: 133, SE_FcStunTimeMod,					On Caster, stun time mod pct, base: chance pct
 	focusFcResistIncoming,				//@Fc, SPA: 510, SE_Fc_Resist_Incoming,				On Target, resist modifier, base: amt
 	focusFcAmplifyMod,					//@Fc, SPA: 507, SE_Fc_Amplify_Mod,					On Caster, damage-heal-dot mod pct, base: pct
 	focusFcAmplifyAmt,					//@Fc, SPA: 508, SE_Fc_Amplify_Amt,					On Caster, damage-heal-dot mod flat amt, base: amt
 	focusFcCastTimeMod2,				//@Fc, SPA: 500, SE_Fc_CastTimeMod2,				On Caster, cast time mod pct, base: pct
 	focusFcCastTimeAmt,					//@Fc, SPA: 501, SE_Fc_CastTimeAmt,					On Caster, cast time mod flat amt, base: milliseconds
-	focusFcHealPctCritIncoming,			//@Fc, SPA: 393, SE_FcHealPctCritIncoming,			On Target, heal received critical chance mod, base: chance pct
+	focusFcHealPctCritIncoming,			//@Fc, SPA: 395, SE_FcHealPctCritIncoming,			On Target, spell healing mod pct, base: pct
 	focusFcHealAmt,						//@Fc, SPA: 392, SE_FcHealAmt,						On Caster, spell healing mod flat amt, base: amt
 	focusFcHealAmtCrit,					//@Fc, SPA: 396, SE_FcHealAmtCrit,					On Caster, spell healing mod flat amt, base: amt
 } focusType; //Any new FocusType needs to be added to the Mob::IsFocus function
@@ -317,7 +318,7 @@ struct Buffs_Struct {
 	char	caster_name[64];
 	int32	ticsremaining;
 	uint32	counters;
-	uint32	numhits; //the number of physical hits this buff can take before it fades away, lots of druid armor spells take advantage of this mixed with powerful effects
+	uint32	hit_number; //the number of physical hits this buff can take before it fades away, lots of druid armor spells take advantage of this mixed with powerful effects
 	uint32	melee_rune;
 	uint32	magic_rune;
 	uint32	dot_rune;
@@ -327,8 +328,7 @@ struct Buffs_Struct {
 	int32	ExtraDIChance;
 	int16	RootBreakChance; //Not saved to dbase
 	uint32	instrument_mod;
-	int16   focusproclimit_time;	//timer to limit number of procs from focus effects 
-	int16   focusproclimit_procamt; //amount of procs that can be cast before timer limiter is set
+	int32	virus_spread_time; //time till next attempted viral spread
 	bool	persistant_buff;
 	bool	client; //True if the caster is a client
 	bool	UpdateClient;
@@ -403,7 +403,7 @@ struct StatBonuses {
 	int32	skillmodmax[EQ::skills::HIGHEST_SKILL + 1];
 	int		effective_casting_level;
 	int		adjusted_casting_skill;				// SPA 112 for fizzles
-	int		reflect_chance;						// chance to reflect incoming spell
+	int		reflect[3];					// chance to reflect incoming spell [0]=Chance [1]=Resist Mod [2]= % of Base Dmg
 	uint32	singingMod;
 	uint32	Amplification;						// stacks with singingMod
 	uint32	brassMod;
@@ -535,6 +535,10 @@ struct StatBonuses {
 	bool	LimitToSkill[EQ::skills::HIGHEST_SKILL + 2];		// Determines if we need to search for a skill proc.
 	uint32  SkillProc[MAX_SKILL_PROCS];			// Max number of spells containing skill_procs.
 	uint32  SkillProcSuccess[MAX_SKILL_PROCS];	// Max number of spells containing skill_procs_success.
+	int32   SpellProc[MAX_AA_PROCS];		// Max number of spells containing melee spell procs.
+	int32   RangedProc[MAX_AA_PROCS];	    // Max number of spells containing ranged spell procs.
+	int32   DefensiveProc[MAX_AA_PROCS];	// Max number of spells containing defensive spell procs.
+	bool	Proc_Timer_Modifier;				// Used to check if this exists, to avoid any further unnncessary checks.
 	uint32  PC_Pet_Rampage[2];					// 0= % chance to rampage, 1=damage modifier
 	uint32  PC_Pet_AE_Rampage[2];				// 0= % chance to AE rampage, 1=damage modifier
 	uint32  PC_Pet_Flurry;						// Percent chance flurry from double attack
@@ -552,9 +556,14 @@ struct StatBonuses {
 	int32	Pet_Add_Atk;						// base = Pet ATK bonus from owner
 	int32	ItemEnduranceRegenCap;				// modify endurance regen cap
 	int32   WeaponStance[WEAPON_STANCE_TYPE_MAX +1];// base = trigger spell id, base2 = 0 is 2h, 1 is shield, 2 is dual wield, [0]spid 2h, [1]spid shield, [2]spid DW
+	bool	ZoneSuspendMinion;					// base 1 allows suspended minions to zone
+	bool	CompleteHealBuffBlocker;			// Use in SPA 101 to prevent recast of complete heal from this effect till blocker buff is removed.
 
 	// AAs
-	int8	Packrat;							//weight reduction for items, 1 point = 10%
+	uint16  SecondaryForte;						// allow a second skill to be specialized with a cap of this value.
+	int32	ShieldDuration;						// extends duration of /shield ability
+	int32	ExtendedShielding;					// extends range of /shield ability
+	int8	Packrat;							// weight reduction for items, 1 point = 10%
 	uint8	BuffSlotIncrease;					// Increases number of available buff slots
 	uint32	DelayDeath;							// how far below 0 hp you can go
 	int8	BaseMovementSpeed;					// Adjust base run speed, does not stack with other movement bonuses.
@@ -597,7 +606,7 @@ struct StatBonuses {
 	int32	FinishingBlow[2];					// Chance to do a finishing blow for specified damage amount.
 	uint32	FinishingBlowLvl[2];				// Sets max level an NPC can be affected by FB. (base1 = lv, base2= ???)
 	int32	ShieldEquipDmgMod;					// Increases weapon's base damage by base1 % when shield is equipped (indirectly increasing hate)
-	bool	TriggerOnValueAmount;				// Triggers off various different conditions, bool to check if client has effect.
+	bool	TriggerOnCastRequirement;			// Triggers off various different conditions defined as emum SpellRestrictions
 	int8	StunBashChance;						// chance to stun with bash.
 	int8	IncreaseChanceMemwipe;				// increases chance to memory wipe
 	int8	CriticalMend;						// chance critical monk mend
@@ -674,6 +683,9 @@ namespace SBIndex {
 	constexpr uint16 FINISHING_EFFECT_LEVEL_CHANCE_BONUS    = 1; // SPA 440, 345, 346
 	constexpr uint16 DOUBLE_MELEE_ROUND_CHANCE              = 0; // SPA 471
 	constexpr uint16 DOUBLE_MELEE_ROUND_DMG_BONUS			= 1; // SPA 471
+	constexpr uint16 REFLECT_CHANCE                         = 0; // SPA 158
+	constexpr uint16 REFLECT_RESISTANCE_MOD                 = 1; // SPA 158
+	constexpr uint16 REFLECT_DMG_EFFECTIVENESS              = 2; // SPA 158
 };
 
 
@@ -683,12 +695,9 @@ typedef struct
 	uint16 chance;
 	uint16 base_spellID;
 	int level_override;
+	uint32 proc_reuse_time;
 } tProc;
 
-struct Shielders_Struct {
-	uint32 shielder_id;
-	uint16 shielder_bonus;
-};
 
 struct WeaponStance_Struct {
 	bool enabled;
