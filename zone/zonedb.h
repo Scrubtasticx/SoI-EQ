@@ -403,6 +403,7 @@ public:
 	bool		GetNPCFactionList(uint32 npcfaction_id, int32* faction_id, int32* value, uint8* temp, int32* primary_faction = 0);
 	bool		GetFactionData(FactionMods* fd, uint32 class_mod, uint32 race_mod, uint32 deity_mod, int32 faction_id); //needed for factions Dec, 16 2001
 	bool		GetFactionName(int32 faction_id, char* name, uint32 buflen); // needed for factions Dec, 16 2001
+	std::string GetFactionName(int32 faction_id);
 	bool		GetFactionIdsForNPC(uint32 nfl_id, std::list<struct NPCFaction*> *faction_list, int32* primary_faction = 0); // improve faction handling
 	bool		SetCharacterFactionLevel(uint32 char_id, int32 faction_id, int32 value, uint8 temp, faction_map &val_list); // needed for factions Dec, 16 2001
 	bool		LoadFactionData();
@@ -525,8 +526,6 @@ public:
 	bool	LoadTributes();
 
 	/* Doors   */
-	bool	DoorIsOpen(uint8 door_id,const char* zone_name);
-	void	SetDoorPlace(uint8 value,uint8 door_id,const char* zone_name);
 	std::vector<DoorsRepository::Doors> LoadDoors(const std::string& zone_name, int16 version);
 	uint32	GetGuildEQID(uint32 guilddbid);
 	void	UpdateDoorGuildID(int doorid, int guild_id);
@@ -595,7 +594,6 @@ protected:
 	std::unordered_set<uint32> npc_spells_loadtried;
 	DBnpcspellseffects_Struct** npc_spellseffects_cache;
 	bool*				npc_spellseffects_loadtried;
-	uint8 door_isopen_array[255];
 };
 
 extern ZoneDatabase database;
