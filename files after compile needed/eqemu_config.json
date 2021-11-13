@@ -1,78 +1,78 @@
 {
-     "server" : {
-          "discord" : {
-			"channelid" : "756595436311150662",
-			"itemurl" : "http://redemptioneq.ddns.net/alla/?a=item&id=",
-			"refreshrate" : "15",
-			"clientid": "669398276549771265",
-			"clientsecret": "33333",
-			"serverid" : "668638800578215957",
-			"username" : "NjY5Mzk4Mjc2NTQ5NzcxMjY1.XijBEQ.5Jx-M9-O59FkM3-fiNWtMC0tH0g"
+   "server" : {
+   		"discord" : {
+		  "channelid" : "756595436311150662",
+		  "itemurl" : "http://redemptioneq.ddns.net//eq/alla/?a=item&id=",
+		  "refreshrate" : "15",
+	  	  "clientid": "858544584296235038",
+		  "clientsecret": "33333",
+		  "serverid" : "668638800578215957",
+		  "username" : "ODU4NTQ0NTg0Mjk2MjM1MDM4.YNfr8w.9H4Yb6XMdYRra66WKZGY-0J92xc"
 		},
-		  "chatserver" : {
-               "host" : "127.0.0.1",
-               "port" : "7778"
-          },
-          "database" : {
-               "db" : "redemptioneq",
-               "host" : "localhost",
-               "password" : "",
-               "port" : "3306",
-               "username" : "root"
-          },
-          "mailserver" : {
-               "host" : "127.0.0.1",
-               "port" : "7778"
-          },
-          "qsdatabase" : {
-               "db" : "redemptioneq",
-               "host" : "localhost",
-               "password" : "",
-               "port" : "3306",
-               "username" : "root"
-          },
-          "webinterface" : {
-               "port" : "9081"
-          },
-          "world" : {
-               "http" : {
-                    "enabled" : "true",
-                    "mimefile" : "mime.types",
-                    "port" : "9080"
-               },
-               "key" : "Xq8wOTeHBe5mltZZ4Gzv1BEUmLrEKu9",
-               "loginserver1" : {
-                    "account" : "scrubtasticx",
-                    "host" : "login.eqemulator.net",
-                    "legacy" : "1",
-                    "password" : "poop81",
-                    "port" : "5998"
-               },
-               "loginserver2" : {
-                    "account" : "scrubtasticx",
-                    "host" : "127.0.0.1",
-                    "password" : "poop81",
-                    "port" : "5998"
-               },
-               "longname" : "Redemption EQ <Alpha>",
-               "shortname" : "REQ",
-			   "locked": "false",
-               "tcp" : {
-                    "ip" : "192.168.0.2",
-                    "port" : "14138"
-               },
-               "telnet" : {
-                    "enabled" : "true",
-                    "ip" : "0.0.0.0",
-                    "port" : "9000"
-               }
-          },
-          "zones" : {
-               "defaultstatus" : "0",
-               "ports" : {
-                    "high" : "7400",
-                    "low" : "7000"
-               }
-          }
-     }
+      "chatserver" : {
+         "host" : "",
+         "port" : "7778"
+      },
+      "database" : {
+         "db" : "redemptioneq",
+         "host" : "127.0.0.1",
+         "password" : "",
+         "port" : "3306",
+         "username" : "root"
+      },
+      "directories" : {
+         "opcodes" : "assets/opcodes/",
+         "patches" : "assets/patches/"
+      },
+      "files" : {
+         "mail_opcodes" : "assets/opcodes/mail_opcodes.conf",
+         "opcodes" : "assets/opcodes/opcodes.conf"
+      },
+      "mailserver" : {
+         "host" : "",
+         "port" : "7778"
+      },
+      "qsdatabase" : {
+         "db" : "redemptioneq",
+         "host" : "127.0.0.1",
+         "password" : "",
+         "port" : "3306",
+         "username" : "root"
+      },
+      "world" : {
+         "key" : "4Pu31zxr2JzWxNO6IfziaMFZW38rZVP",
+         "loginserver1" : {
+            "account" : "scrubtasticx",
+            "host" : "login.eqemulator.net",
+            "legacy" : "1",
+            "password" : "poop81",
+            "port" : "5998"
+         },
+         "loginserver2" : {
+            "account" : "scrubtasticx",
+            "host" : "127.0.0.1",
+            "password" : "poop81",
+            "port" : "5998"
+         },
+         "longname" : "Redemption EQ <Alpha>",
+         "shortname" : "REQ",
+         "locked": "true",
+         "tcp" : {
+            "ip" : "127.0.0.1",
+            "port" : "9001"
+         },
+         "telnet" : {
+            "enabled" : "true",
+            "ip" : "0.0.0.0",
+            "port" : "9000"
+         }
+      },
+      "zones" : {
+         "defaultstatus" : "0",
+         "ports" : {
+            "high" : "7400",
+            "low" : "7000"
+         }
+      }
+   }
 }
