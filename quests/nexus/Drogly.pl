@@ -37,7 +37,7 @@ sub EVENT_SAY
 		
 		if ($text=~/100/i)
 		{
-			my $plat = $total+$price1*250;
+			my $plat = $total+$price1*100;
 			
 			if($total >= $price1)         #Cost of the item
 			{
@@ -88,7 +88,7 @@ sub EVENT_SAY
 		
 		if ($text=~/1000/i)
 		{
-			my $plat = $total+$price4*500;
+			my $plat = $total+$price4*1000;
 			
 			if($total >= $price4)         #Cost of the item
 			{

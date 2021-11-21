@@ -5,10 +5,10 @@ my $go = quest::saylink("Quest");
            }
 		elsif($text=~/Quest/i )
 		{
-          if(!quest::istaskactive(292) && !quest::istaskcompleted(292))
+          if(!quest::istaskactive(4796) && !quest::istaskcompleted(4796))
           {
            quest::say("Assigning you task to kill monsters,");
-           quest::assigntask(292);
+           quest::assigntask(4796);
           }
 	}
 }
