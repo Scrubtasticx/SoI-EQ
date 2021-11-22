@@ -105,7 +105,7 @@ sub EVENT_SAY
 		
 		elsif ($text=~/5k/i)
 		{
-				if ($client->TakeMoneyFromPP($cost1*1000, 1))
+				if ($client->TakeMoneyFromPP($cost1*5000, 1))
 				{
                         #:: Give 50 AAs
                         $client->AddAAPoints(50);
@@ -120,7 +120,7 @@ sub EVENT_SAY
 		
         elsif ($text=~/25k/i)
 		{
-                if ($client->TakeMoneyFromPP($cost2*1000, 1))
+                if ($client->TakeMoneyFromPP($cost2*25000, 1))
 				{
                         #:: Give 100 AAs
                         $client->AddAAPoints(100);
@@ -135,7 +135,7 @@ sub EVENT_SAY
 		
 		elsif ($text=~/250k/i)
 		{
-                if ($client->TakeMoneyFromPP($cost3*1000, 1))
+                if ($client->TakeMoneyFromPP($cost3*250000, 1))
 				{
                         #:: Give 250 AAs
                         $client->AddAAPoints(250);
@@ -150,7 +150,7 @@ sub EVENT_SAY
 		
 		elsif ($text=~/500k/i)
 		{
-                if ($client->TakeMoneyFromPP($cost4*1000, 1))
+                if ($client->TakeMoneyFromPP($cost4*500000, 1))
 				{
                         #:: Give 500 AAs
                         $client->AddAAPoints(500);
