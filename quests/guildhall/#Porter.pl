@@ -71,6 +71,9 @@ sub EVENT_ENTER {
   elsif(defined $qglobals{"ghport$uguild_id"} && $qglobals{"ghport$uguild_id"} == 88740) { #brellsrest
     quest::popup('Teleport', 'Teleport to Brell\'s Rest?', 21986, 1, 0);
   }
+  elsif(defined $qglobals{"ghport$uguild_id"} && $qglobals{"ghport$uguild_id"} == 147640 ) { #feerrott2
+    quest::popup('Teleport', 'Teleport to Feerrott2?', 28000, 1, 0);
+  }
 }
 
 sub EVENT_ITEM {

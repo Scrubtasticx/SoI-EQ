@@ -73,10 +73,13 @@ sub EVENT_POPUPRESPONSE {
     #quest::movepc(416,-2,-425,-19);
   }
   if ($popupid == 20543) { #potimea
-    quest::movepc(219,0,110,8); # Zone: potimea
+    #quest::movepc(219,0,110,8); # Zone: potimea
   }
   if ($popupid == 21986) { #brellsrest
     #quest::movepc(480,-23,-619,36);
+  }
+  if ($popupid == 28000) { #feerrott2
+    quest::movepc(700,-2693,-974,2);
   }
 }
 

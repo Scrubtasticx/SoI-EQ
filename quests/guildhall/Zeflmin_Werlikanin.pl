@@ -95,6 +95,11 @@ sub EVENT_ITEM {
     quest::emote("takes the crystal from you and mutters some arcane words over it. 'The crystal geode is now active, just go step on the crystal platform and you'll be whisked away to your destination! I hope you don't get motion sickness!'");
     quest::ze(15,'The Guildhall Portal has been aligned to Brell\'s Rest');
   }
+  } elsif(plugin::check_handin(\%itemcount, 147640  => 1)){
+    quest::setglobal("ghport$uguild_id",147640 ,3,"H24");
+    quest::emote("takes the crystal from you and mutters some arcane words over it. 'The crystal geode is now active, just go step on the crystal platform and you'll be whisked away to your destination! I hope you don't get motion sickness!'");
+    quest::ze(15,'The Guildhall Portal has been aligned to Feerrott2');
+  }
   plugin::return_items(\%itemcount);
 }
 
@@ -150,6 +155,8 @@ sub EVENT_SIGNAL {
       $pc->Message(5, $npc->GetCleanName().' says \'The teleport stone is currently aligned to The Plane of Time.\'');
     } elsif(defined $qglobals{"ghport$uguild_id"} && $qglobals{"ghport$uguild_id"} == 88740) { #brellsrest
       $pc->Message(5, $npc->GetCleanName().' says \'The teleport stone is currently aligned to Brell\'s Rest.\'');  
+    } elsif(defined $qglobals{"ghport$uguild_id"} && $qglobals{"ghport$uguild_id"} == 147640 ) { #feerrott2
+      $pc->Message(5, $npc->GetCleanName().' says \'The teleport stone is currently aligned to Feerrott2.\'');  
     }
   }
 }

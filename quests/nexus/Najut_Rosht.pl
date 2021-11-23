@@ -9,7 +9,7 @@ my @ZoneArray =
 		"Kael Drakkel",
 		"Velketor's Labyrinth",
 		"Temple of Droga",
-		"Veksar"
+		"Feerrott Dream"
 
 	);
 
@@ -367,13 +367,13 @@ sub EVENT_SAY {
 			quest::say("I am sorry, $name, but I was right in the middle of speaking with " . $Name . ".  Is " . $Name . " [" . quest::saylink("gone") . "]?");
 		}
 	}
-	elsif ($text=~/\bVeksar\b/i) {
+	elsif ($text=~/\bFeerrott\b/i) {
 		#:: Key a data bucket to protect functions
 		$key = $NPCName . "-current-name";
 		#:: Match if the person talking is the focus of our attention
 		if (quest::get_data($key) eq "$name") {
 			@Data = undef;  
-			@Data = ("veksar", 109, 1.00, -486.00, -27.87);
+			@Data = ("feerrott2", 700, -2693.37, -974.36, 2.31082);
 			#:: Key a data bucket to check the player's existing zone instance setting
 			$key = $client->CharacterID() . "-active-instance-zone";
 			#:: Match if the data bucket does not exist
