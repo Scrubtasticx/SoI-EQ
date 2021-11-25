@@ -5,7 +5,7 @@ sub EVENT_SPAWN {
 
 sub EVENT_SAY {
   if($text=~/hail/i) {
-    quest::setglobal("thulehouse", 1, 5, "F");
+    quest::setglobal("thulefeerrott", 1, 5, "F");
     $client->Message(4, "You receive a character flag!");
   }
 }
