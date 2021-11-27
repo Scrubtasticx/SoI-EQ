@@ -7,26 +7,26 @@ my $go3 = quest::saylink("HealIV");
            }
 		elsif($text=~/FuryIII/i )
 		{
-          if(quest::istaskcompleted(297) && !quest::istaskactive(299) && !quest::istaskcompleted(299))
+          if(quest::istaskcompleted(5200) && !quest::istaskactive(5300) && !quest::istaskcompleted(5300))
           {
            quest::say("Assigning you task to kill monsters,");
-           quest::assigntask(299);
+           quest::assigntask(5300);
           }
 	}
 		elsif($text=~/MagicIII/i )
 		{
-          if(quest::istaskcompleted(297) && !quest::istaskactive(300) && !quest::istaskcompleted(300))
+          if(quest::istaskcompleted(5201) && !quest::istaskactive(5301) && !quest::istaskcompleted(5301))
           {
            quest::say("Assigning you task to kill monsters,");
-           quest::assigntask(300);
+           quest::assigntask(5301);
           }
 	}
 		elsif($text=~/HealIII/i )
 		{
-          if(quest::istaskcompleted(298) && !quest::istaskactive(301) && !quest::istaskcompleted(301))
+          if(quest::istaskcompleted(5202) && !quest::istaskactive(5302) && !quest::istaskcompleted(5302))
           {
            quest::say("Assigning you task to kill monsters,");
-           quest::assigntask(301);
+           quest::assigntask(5302);
           }
 	}
 }
