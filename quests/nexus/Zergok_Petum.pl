@@ -25,22 +25,21 @@ sub EVENT_SAY{
 	
 	my $TextToCenter = plugin::PWAutoCenter("Welcome to Redemption EQ");
 	my $TextToCenter2 = plugin::PWAutoCenter("All hotzones are in the Instance NPC");
-	my $TextToCenter3 = plugin::PWAutoCenter("We have tons of custom NPCs in our hub. For link to our website for spell file and forums. Click the discord link below");
+	my $TextToCenter3 = plugin::PWAutoCenter("We have tons of custom NPCs in our hub. For link to our website for spell file and forums. Click the discord link below. We are a solo/duo server, with raid content aswell.");
 	my $Indent = plugin::PWIndent();
 	my $TextToCenter4 = plugin::PWAutoCenter("");
-	my $TextToCenter5 = plugin::PWAutoCenter("Alpha Phase");
-	my $Link = plugin::PWHyperLink("https://discord.gg/nkPZBeU", "Return of the Sleeper (Discord Server!)");
+	my $TextToCenter5 = plugin::PWAutoCenter("We are still in Alpha. So please be patient we update alot. Thanks and Enjoy!");
+	my $Link = plugin::PWHyperLink("https://discord.gg/nkPZBeU", "Discord Server");
 	my $Yel = plugin::PWColor("Yellow");
 	my $Blu = plugin::PWColor("Light Blue");
 	my $Red = plugin::PWColor("Red");
 	my $grn = plugin::PWColor("Forest Green");
-	quest::popup("Guide NPC", "$TextToCenter <br>
-	$Yel $TextToCenter2 </c> <br>
-	$Blu $TextToCenter3 </c> <br>
-	<br><br>
+	quest::popup("Guide NPC", "$TextToCenter <br><br><br>
+	$Yel $TextToCenter2 </c> <br><br><br>
+	$Blu $TextToCenter3 </c> <br><br>
 	$Red $TextToCenter4 </c> <br>
-	$grn $TextToCenter5 </c> <br><br><br>
-	$Indent $Link
+	$grn $TextToCenter5 </c> <br><br><br><br><br>
+	$Indent $Indent $Indent $Indent $Link
 	");
 	}
 #    if ($text =~/PoK/i) {
