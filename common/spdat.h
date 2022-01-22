@@ -26,6 +26,7 @@
 #define SPELLBOOK_UNKNOWN 0xFFFFFFFF		//player profile spells are 32 bit
 
 //some spell IDs which will prolly change, but are needed
+#define SPELL_LIFEBURN 2755
 #define SPELL_LEECH_TOUCH 2766
 #define SPELL_LAY_ON_HANDS 87
 #define SPELL_HARM_TOUCH 88
@@ -167,6 +168,7 @@
 #define SPELL_ILLUSION_TREE 601
 #define SPELL_ILLUSION_FEMALE 1731
 #define SPELL_ILLUSION_MALE 1732
+#define SPELL_UNSUMMON_SELF 892
 
 //spellgroup ids
 #define SPELLGROUP_FRENZIED_BURNOUT 2754
@@ -189,7 +191,7 @@
 #define MAX_FOCUS_PROC_LIMIT_TIMERS 20 //Number of focus recast timers that can be going at same time (This is arbitrary)
 #define MAX_PROC_LIMIT_TIMERS 8 //Number of proc delay timers that can be going at same time, different proc types get their own timer array. (This is arbitrary)
 #define MAX_APPEARANCE_EFFECTS 20 //Up to 20 Appearance Effects can be saved to a mobs appearance effect array, these will be sent to other clients when they enter a zone (This is arbitrary)
-#define MAX_CAST_ON_SKILL_USE 36; //Actual amount is MAX/3
+#define MAX_CAST_ON_SKILL_USE 36 //Actual amount is MAX/3
 
 
 const int Z_AGGRO=10;
@@ -998,7 +1000,7 @@ typedef enum {
 #define	SE_FinishingBlow				278 // implemented[AA] - chance to do massive damage under 10% HP (base1 = chance, base2 = damage)
 #define SE_Flurry						279	// implemented
 #define SE_PetFlurry					280 // implemented[AA]
-#define SE_FeignedMinion				281	// *not implemented[AA] ability allows you to instruct your pet to feign death via the '/pet feign' command. value = succeed chance
+#define SE_FeignedMinion				281	// implemented, ability allows you to instruct your pet to feign death via the '/pet feign' command, base: succeed chance, limit: none, max: none, Note: Only implemented as an AA.
 #define SE_ImprovedBindWound			282	// implemented[AA] - increase bind wound amount by percent.
 #define SE_DoubleSpecialAttack			283	// implemented[AA] - Chance to perform second special attack as monk
 //#define SE_LoHSetHeal					284	// not used
@@ -1016,14 +1018,14 @@ typedef enum {
 #define SE_FcSpellVulnerability			296	// implemented, @Fc, On Target, spell damage taken mod pct, base: min pct, limit: max pct
 #define SE_FcDamageAmtIncoming			297 // implemetned, @Fc, On Target, damage taken flat amt, base: amt
 #define SE_ChangeHeight					298	// implemented
-#define SE_WakeTheDead					299	// implemented
+#define SE_WakeTheDead					299	// implemented, @Pets, summon one temporary pet from nearby corpses that last a set duration, base: none, limit: none, max: duration (seconds). Note: max range of corpse is 250.
 #define SE_Doppelganger					300	// implemented
 #define SE_ArcheryDamageModifier		301	// implemented[AA] - increase archery damage by percent
 #define SE_FcDamagePctCrit				302	// implemented, @Fc, On Caster, spell damage mod pct, base: min pct, limit: max pct, Note: applied after critical hits has been calculated.
 #define SE_FcDamageAmtCrit				303	// implemented, @Fc, On Caster, spell damage mod flat amt, base: amt
 #define SE_OffhandRiposteFail			304 // implemented as bonus - enemy cannot riposte offhand attacks
 #define SE_MitigateDamageShield			305 // implemented - off hand attacks only (Shielding Resistance)
-//#define SE_ArmyOfTheDead				306 // *not implemented NecroAA - This ability calls up to five shades of nearby corpses back to life to serve the necromancer. The soulless abominations will mindlessly fight the target until called back to the afterlife some time later. The first rank summons up to three shades that serve for 60 seconds, and each additional rank adds one more possible shade and increases their duration by 15 seconds
+#define SE_ArmyOfTheDead				306 // implemented, @Pets, summon multiple temporary pets from nearby corpses that last a set duration, base: amount of corpses that a pet can summon from, limit: none, max: duration (seconds). Note: max range of corpse is 250.
 //#define SE_Appraisal					307 // *not implemented Rogue AA - This ability allows you to estimate the selling price of an item you are holding on your cursor.
 #define SE_ZoneSuspendMinion			308 // implemented, @Pet, allow suspended pets to be resummoned upon zoning, base: 1, limit: none, max: none, Calc: Bool
 #define SE_GateCastersBindpoint			309 // implemented - Gate to casters bind point

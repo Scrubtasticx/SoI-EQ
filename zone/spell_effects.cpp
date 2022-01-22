@@ -1557,18 +1557,17 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 #ifdef SPELL_EFFECT_SPAM
 				snprintf(effect_desc, _EDLEN, "Feign Death");
 #endif
-				//todo, look up spell ID in DB
-				if(spell_id == 2488) //Dook- Lifeburn fix
+				if(spell_id == SPELL_LIFEBURN) //Dook- Lifeburn fix
 					break;
 
 				if(IsClient()) {
 					CastToClient()->SetHorseId(0); // dismount if have horse
 
 					if (zone->random.Int(0, 99) > spells[spell_id].base_value[i]) {
-						CastToClient()->SetFeigned(false);
+						SetFeigned(false);
 						entity_list.MessageCloseString(this, false, 200, 10, STRING_FEIGNFAILED, GetName());
 					} else {
-						CastToClient()->SetFeigned(true);
+						SetFeigned(true);
 					}
 				}
 				break;
@@ -2276,10 +2275,10 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 
 				switch(spells[spell_id].skill) {
 				case EQ::skills::SkillThrowing:
-					caster->DoThrowingAttackDmg(this, nullptr, nullptr, spells[spell_id].base_value[i],spells[spell_id].limit_value[i], 0, ReuseTime);
+					caster->DoThrowingAttackDmg(this, nullptr, nullptr, spells[spell_id].base_value[i],spells[spell_id].limit_value[i], 0, ReuseTime, 0, 0, 4.0f, true);
 					break;
 				case EQ::skills::SkillArchery:
-					caster->DoArcheryAttackDmg(this, nullptr, nullptr, spells[spell_id].base_value[i],spells[spell_id].limit_value[i], 0, ReuseTime);
+					caster->DoArcheryAttackDmg(this, nullptr, nullptr, spells[spell_id].base_value[i],spells[spell_id].limit_value[i], 0, ReuseTime, 0, 0, nullptr, 0, 4.0f, true);
 					break;
 				default:
 					caster->DoMeleeSkillAttackDmg(this, spells[spell_id].base_value[i], spells[spell_id].skill, spells[spell_id].limit_value[i], 0, false, ReuseTime);
@@ -2296,10 +2295,35 @@ bool Mob::SpellEffect(Mob* caster, uint16 spell_id, float partial, int level_ove
 				//meh dupe issue with npc casting this
 				if(caster && caster->IsClient()){
 					int dur = spells[spell_id].max_value[i];
-					if (!dur)
+					if (!dur) {
 						dur = 60;
+					}
 
-					caster->WakeTheDead(spell_id, caster->GetTarget(), dur);
+					Mob* m_target = caster->GetTarget();
+					if (m_target) {
+						entity_list.TryWakeTheDead(caster, m_target, spell_id, 250, dur, 1);
+					}
+				}
+				break;
+			}
+
+			case SE_ArmyOfTheDead:
+			{
+				if (caster && caster->IsClient()) {
+					int dur = spells[spell_id].max_value[i];
+					if (!dur) {
+						dur = 60;
+					}
+
+					int amount = spells[spell_id].base_value[i];
+					if (!amount) {
+						amount = 1;
+					}
+
+					Mob* m_target = caster->GetTarget();
+					if (m_target) {
+						entity_list.TryWakeTheDead(caster, m_target, spell_id, 250, dur, amount);
+					}
 				}
 				break;
 			}

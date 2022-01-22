@@ -1207,7 +1207,7 @@ void Mob::ApplyAABonuses(const AA::Rank &rank, StatBonuses *newbon)
 		}
 
 		case SE_SkillAttackProc: {
-			for (int i = 0; i < MAX_CAST_ON_SKILL_USE i += 3) {
+			for (int i = 0; i < MAX_CAST_ON_SKILL_USE; i += 3) {
 				if (!newbon->SkillAttackProc[i + SBIndex::SKILLATK_PROC_SPELL_ID]) { // spell id
 					newbon->SkillAttackProc[i + SBIndex::SKILLATK_PROC_SPELL_ID] = rank.spell; // spell to proc
 					newbon->SkillAttackProc[i + SBIndex::SKILLATK_PROC_CHANCE] = base_value; // Chance base 1000 = 100% proc rate
@@ -1571,8 +1571,10 @@ void Mob::ApplyAABonuses(const AA::Rank &rank, StatBonuses *newbon)
 			break;
 
 		case SE_FeignedMinion:
-			if (newbon->FeignedMinionChance < base_value)
+			if (newbon->FeignedMinionChance < base_value) {
 				newbon->FeignedMinionChance = base_value;
+			}
+			newbon->PetCommands[PET_FEIGN] = true;
 			break;
 
 		case SE_AdditionalAura:
@@ -3586,7 +3588,7 @@ void Mob::ApplySpellsBonuses(uint16 spell_id, uint8 casterlevel, StatBonuses *ne
 			}
 
 			case SE_SkillAttackProc: {
-				for (int i = 0; i < MAX_CAST_ON_SKILL_USE i += 3) { 
+				for (int i = 0; i < MAX_CAST_ON_SKILL_USE; i += 3) {
 					if (!new_bonus->SkillAttackProc[i + SBIndex::SKILLATK_PROC_SPELL_ID]) { // spell id
 						new_bonus->SkillAttackProc[i + SBIndex::SKILLATK_PROC_SPELL_ID] = max_value; // spell to proc
 						new_bonus->SkillAttackProc[i + SBIndex::SKILLATK_PROC_CHANCE] = effect_value; // Chance base 1000 = 100% proc rate
