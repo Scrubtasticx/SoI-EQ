@@ -189,7 +189,9 @@ public:
 	Client *GetClientByWID(uint32 iWID);
 	Client *GetClientByLSID(uint32 iLSID);
 	Client *GetClient(uint32 ip, uint16 port);
-	Client *GetRandomClient(const glm::vec3& location, float Distance, Client *ExcludeClient = nullptr);
+	Client* GetRandomClient(const glm::vec3& location, float distance, Client* exclude_client = nullptr);
+	NPC* GetRandomNPC(const glm::vec3& location, float distance, NPC* exclude_npc = nullptr);
+	Mob* GetRandomMob(const glm::vec3& location, float distance, Mob* exclude_mob = nullptr);
 	Group *GetGroupByMob(Mob* mob);
 	Group *GetGroupByClient(Client* client);
 	Group *GetGroupByID(uint32 id);
@@ -315,6 +317,7 @@ public:
 	void	DestroyTempPets(Mob *owner);
 	int16	CountTempPets(Mob *owner);
 	void	AddTempPetsToHateList(Mob *owner, Mob* other, bool bFrenzy = false);
+	void	AddTempPetsToHateListOnOwnerDamage(Mob *owner, Mob* attacker, int32 spell_id);
 	Entity *GetEntityMob(uint16 id);
 	Entity *GetEntityMerc(uint16 id);
 	Entity *GetEntityDoor(uint16 id);
@@ -381,12 +384,14 @@ public:
 	void	SendNimbusEffects(Client *c);
 	void	SendUntargetable(Client *c);
 	void	SendAppearanceEffects(Client *c);
+	void    SendIllusionWearChange(Client *c);
 	void	DuelMessage(Mob* winner, Mob* loser, bool flee);
 	void	QuestJournalledSayClose(Mob *sender, float dist, const char* mobname, const char* message, Journal::Options &opts);
 	void	GroupMessage(uint32 gid, const char *from, const char *message);
 	void	ExpeditionWarning(uint32 minutes_left);
 
 	void	RemoveFromTargets(Mob* mob, bool RemoveFromXTargets = false);
+	void	RemoveFromTargetsFadingMemories(Mob* spell_target, bool RemoveFromXTargets = false, uint32 max_level = 0);
 	void	RemoveFromXTargets(Mob* mob);
 	void	RemoveFromAutoXTargets(Mob* mob);
 	void	ReplaceWithTarget(Mob* pOldMob, Mob*pNewTarget);
@@ -420,7 +425,6 @@ public:
 		int *max_targets = nullptr
 	);
 	void MassGroupBuff(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster = true);
-	void AEBardPulse(Mob *caster, Mob *center, uint16 spell_id, bool affect_caster = true);
 
 	//trap stuff
 	Mob*	GetTrapTrigger(Trap* trap);

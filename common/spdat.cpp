@@ -266,7 +266,8 @@ bool IsInvisSpell(uint16 spell_id)
 		IsEffectInSpell(spell_id, SE_Invisibility2) ||
 		IsEffectInSpell(spell_id, SE_InvisVsUndead) ||
 		IsEffectInSpell(spell_id, SE_InvisVsUndead2) ||
-		IsEffectInSpell(spell_id, SE_InvisVsAnimals)) {
+		IsEffectInSpell(spell_id, SE_InvisVsAnimals) ||
+		IsEffectInSpell(spell_id, SE_ImprovedInvisAnimals)) {
 		return true;
 	}
 	return false;
@@ -363,10 +364,19 @@ bool IsImprovedDamageSpell(uint16 spell_id)
 
 bool IsAEDurationSpell(uint16 spell_id)
 {
-	if (IsValidSpell(spell_id) &&
-			(spells[spell_id].target_type == ST_AETarget || spells[spell_id].target_type == ST_UndeadAE) &&
-			spells[spell_id].aoe_duration != 0)
+	/*
+		There are plenty of spells with aoe_duration set at single digit numbers, but these
+		do not act as duration effects.
+	*/
+	if (IsValidSpell(spell_id) && 
+		spells[spell_id].aoe_duration >= 2500 &&
+		(	spells[spell_id].target_type == ST_AETarget || 
+			spells[spell_id].target_type == ST_UndeadAE ||
+			spells[spell_id].target_type == ST_AECaster ||
+			spells[spell_id].target_type == ST_Ring)
+		) {
 		return true;
+	}
 
 	return false;
 }
@@ -1462,6 +1472,23 @@ bool IsInstrumentModAppliedToSpellEffect(int32 spell_id, int effect)
 	//Allowing anything not confirmed to be restricted / allowed to receive modifiers, as to not inhbit anyone making custom bard songs.
 }
 
+bool IsPulsingBardSong(int32 spell_id)
+{
+	if (!IsValidSpell(spell_id)) {
+		return false;
+	}
+	
+	if (spells[spell_id].buff_duration == 0xFFFF ||
+		spells[spell_id].recast_time> 0 ||
+		spells[spell_id].mana > 0 || 
+		IsEffectInSpell(spell_id, SE_TemporaryPets) || 
+		IsEffectInSpell(spell_id, SE_Familiar)) {
+		return false;
+	}
+	
+	return true;
+}
+
 int GetSpellStatValue(uint32 spell_id, const char* stat_identifier, uint8 slot)
 {
 	if (!IsValidSpell(spell_id))
@@ -1670,4 +1697,16 @@ bool CastRestrictedSpell(int spellid)
 		default:
 			return false;
 	}
+}
+
+bool IgnoreCastingRestriction(int32 spell_id) {
+	/*
+		field 'cast_not_standing' allows casting when sitting, stunned, mezed, Divine Aura, through SPA 343 Interrupt casting
+		Likely also allows for casting while feared, but need to confirm. Possibly also while charmed.
+		This field also allows for damage to ignore DA immunity.
+	*/
+	if (spells[spell_id].cast_not_standing) {
+		return true;
+	}
+	return false;
 }

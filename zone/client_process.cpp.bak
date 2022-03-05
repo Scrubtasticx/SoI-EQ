@@ -721,11 +721,6 @@ void Client::OnDisconnect(bool hard_disconnect) {
 		trade->Reset();
 		Other->trade->Reset();
 	}
-	
-	//Zycron Logout message
-	if (!bZoning)
-		worldserver.SendEmoteMessage(nullptr, 0, 0, Chat::Broadcasts, "%s has disconnected from the server.", GetCleanName());
-	//Zycron Logout message end
 
 	database.SetFirstLogon(CharacterID(), 0); //We change firstlogon status regardless of if a player logs out to zone or not, because we only want to trigger it on their first login from world.
 

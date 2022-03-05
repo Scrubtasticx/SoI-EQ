@@ -1052,6 +1052,10 @@ std::string QuestManager::getbodytypename(uint32 bodytype_id) {
 	return EQ::constants::GetBodyTypeName(static_cast<bodyType>(bodytype_id));
 }
 
+std::string QuestManager::getconsiderlevelname(uint8 consider_level) {
+	return EQ::constants::GetConsiderLevelName(consider_level);
+}
+
 void QuestManager::safemove() {
 	QuestManagerCurrentQuestVars();
 	if (initiator && initiator->IsClient())
@@ -1353,7 +1357,8 @@ void QuestManager::save() {
 
 void QuestManager::faction(int faction_id, int faction_value, int temp) {
 	QuestManagerCurrentQuestVars();
-	if (initiator && initiator->IsClient()) {
+	running_quest run = quests_running_.top();
+	if(run.owner->IsCharmed() == false && initiator && initiator->IsClient()) {
 		if(faction_id != 0 && faction_value != 0) {
 			initiator->SetFactionLevel2(
 				initiator->CharacterID(),
@@ -3696,4 +3701,9 @@ const SPDat_Spell_Struct* QuestManager::getspell(uint32 spell_id) {
         return &spells[spell_id];
     }
     return nullptr;
+}
+
+std::string QuestManager::getenvironmentaldamagename(uint8 damage_type) {
+	std::string environmental_damage_name = EQ::constants::GetEnvironmentalDamageName(damage_type);
+	return environmental_damage_name;
 }
